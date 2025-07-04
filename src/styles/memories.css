@@ -1,0 +1,392 @@
+/* Instagram-like memory modal styles */
+.memory-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.memory-modal {
+  position: relative;
+  background-color: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  max-width: 48rem;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .memory-modal {
+    flex-direction: row;
+  }
+}
+
+.memory-modal-image {
+  width: 100%;
+  background-color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .memory-modal-image {
+    width: 60%;
+  }
+}
+
+.memory-modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-height: 70vh;
+}
+
+.memory-modal-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+@media (min-width: 768px) {
+  .memory-modal-details {
+    width: 40%;
+    max-height: 90vh;
+  }
+}
+
+.memory-modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e5e5;
+  display: flex;
+  align-items: center;
+}
+
+.memory-modal-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-right: 0.75rem;
+}
+
+.memory-modal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-modal-content {
+  padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.memory-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  border-radius: 9999px;
+  padding: 0.25rem;
+  z-index: 10;
+  transition: background-color 0.2s;
+}
+
+.memory-modal-close:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  border-radius: 9999px;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.carousel-nav:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.carousel-nav.prev {
+  left: 0.75rem;
+}
+
+.carousel-nav.next {
+  right: 0.75rem;
+}
+
+.image-counter {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+}
+
+/* Add these styles to ensure memory cards are clickable */
+.memories-container {
+  width: 100%;
+}
+
+.memories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.memory-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: none; /* Remove transition */
+}
+
+.memory-card:hover {
+  /* Remove all hover styles */
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.memory-image {
+  position: relative;
+  width: 100%;
+  height: 200px;
+}
+
+.memory-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.pin-button, .delete-button {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pin-button:hover, .delete-button:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.pin-button.pinned {
+  color: #f8a95d;
+}
+
+.delete-button {
+  background-color: rgba(220, 38, 38, 0.7);
+}
+
+.delete-button:hover {
+  background-color: rgba(220, 38, 38, 0.9);
+}
+
+.delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.memory-details {
+  padding: 0.75rem;
+}
+
+.memory-location {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #5E5854;
+  margin-top: 0.25rem;
+}
+
+.memory-location svg {
+  margin-right: 0.25rem;
+}
+
+.memory-date {
+  font-size: 0.75rem;
+  color: #5E5854;
+  margin-top: 0.5rem;
+}
+
+.multiple-images-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+/* Add these styles for the memory selection and action bar */
+.memories-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #f8f4e3;
+  border-radius: 0.5rem;
+  border: 1px solid #d1c7b7;
+}
+
+.select-mode-button, 
+.select-action-button, 
+.delete-action-button, 
+.cancel-action-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-mode-button {
+  background-color: #2c5e4a;
+  color: white;
+  border: none;
+}
+
+.select-mode-button:hover {
+  background-color: #204231;
+}
+
+.select-action-button {
+  background-color: transparent;
+  color: #2c5e4a;
+  border: 1px solid #2c5e4a;
+}
+
+.select-action-button:hover {
+  background-color: rgba(44, 94, 74, 0.1);
+}
+
+.delete-action-button {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+}
+
+.delete-action-button:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.delete-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-action-button {
+  background-color: transparent;
+  color: #5E5854;
+  border: 1px solid #5E5854;
+  margin-left: 0.5rem;
+}
+
+.cancel-action-button:hover {
+  background-color: rgba(94, 88, 84, 0.1);
+}
+
+.select-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.selected-count {
+  font-size: 0.875rem;
+  color: #5E5854;
+  font-weight: 500;
+}
+
+.memory-actions-buttons {
+  display: flex;
+  align-items: center;
+}
+
+/* Styles for the select button on memory cards */
+.select-button {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 2px solid #2c5e4a;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select-button.selected {
+  background-color: #2c5e4a;
+  color: white;
+}
+
+/* Style for selected memory cards */
+.memory-card.selected {
+  border: 2px solid #2c5e4a;
+  box-shadow: 0 0 0 2px rgba(44, 94, 74, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .memories-action-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .select-actions, .memory-actions-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
