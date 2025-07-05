@@ -278,6 +278,9 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   const [realtimeActivities, setRealtimeActivities] = useState([]);
   const [socket, setSocket] = useState(null);
 
+  // Add this near the top of your component, with other state variables
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
   // Fetch notifications from API
   const fetchNotifications = async () => {
     try {
