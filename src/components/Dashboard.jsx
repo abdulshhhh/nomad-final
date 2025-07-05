@@ -165,8 +165,8 @@ function Profile({ user, onClose, onMessage, onPhotoClick }) {
                     <h5 className="font-bold text-[#2c5e4a]">
                       {trip.title || trip.destination}
                     </h5>
-                    <p className="text-sm text-[#5E5854]">
-                      {trip.destination} •{" "}
+                    <p className="text-sm text-[#5E5854] flex items-center">
+                      <FiCalendar className="mr-1" /> {trip.destination} •{" "}
                       {trip.date || `${trip.fromDate} - ${trip.toDate}`}
                     </p>
                   </div>
@@ -2352,7 +2352,9 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                       </h4>
                       <p className="text-[#5E5854] mb-2">{trip.destination}</p>
                       <div className="flex justify-between items-center text-sm text-[#5E5854]">
-                        <span>📅 {trip.date || trip.fromDate}</span>
+                        <span className="flex items-center">
+                          <FiCalendar className="mr-1" /> {trip.date || trip.fromDate}
+                        </span>
                         <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
                           Joined
                         </span>

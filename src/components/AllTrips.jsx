@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { FiMapPin, FiCalendar, FiUsers, FiArrowLeft, FiSearch, FiFilter, FiDollarSign, FiClock } from "react-icons/fi";
+import { FiMapPin, FiCalendar, FiUsers, FiArrowLeft, FiSearch, FiFilter, FiDollarSign, FiClock, FiRefreshCw, FiX, FiActivity } from "react-icons/fi";
+import { BsRecord2Fill } from 'react-icons/bs';
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -25,6 +26,20 @@ const budgetRanges = [
   { label: "₹50,000 - ₹1,00,000", min: 50000, max: 100000 },
   { label: "Above ₹1,00,000", min: 100000, max: Infinity }
 ];
+
+// Helper function to generate activities based on category
+const generateActivitiesFromCategory = (category) => {
+  const activityMap = {
+    'Adventure': ['Hiking', 'Rock Climbing', 'Zip-lining', 'Rafting', 'Paragliding'],
+    'Beach': ['Swimming', 'Snorkeling', 'Beach Volleyball', 'Sunbathing', 'Beach Parties'],
+    'City': ['City Tours', 'Museum Visits', 'Shopping', 'Local Cuisine Tasting', 'Nightlife'],
+    'Cultural': ['Historical Site Visits', 'Local Festivals', 'Art Galleries', 'Traditional Performances', 'Cooking Classes'],
+    'Mountain': ['Trekking', 'Skiing', 'Mountain Biking', 'Photography', 'Camping'],
+    'Road Trip': ['Scenic Drives', 'Local Stops', 'Photography', 'Camping', 'Local Food Tasting']
+  };
+  
+  return activityMap[category] || ['Sightseeing', 'Local Cuisine', 'Photography', 'Shopping', 'Relaxation'];
+};
 
 export default function AllTrips() {
   // 🚀 STATE MANAGEMENT FOR REAL-TIME DATA
@@ -78,7 +93,9 @@ export default function AllTrips() {
           organizer: trip.createdBy?.fullName || "Unknown",
           organizerEmail: trip.createdBy?.email,
           createdAt: trip.createdAt,
-          status: trip.status || "upcoming"
+          status: trip.status || "upcoming",
+          accommodation: trip.accommodation || "Will discuss further", // Ensure accommodation is included
+          activities: trip.activities || generateActivitiesFromCategory(trip.category || "Adventure") // Ensure activities are included
         }));
 
         setTrips(transformedTrips);
@@ -117,15 +134,15 @@ export default function AllTrips() {
       });
 
       if (response.data.success) {
-        alert(`🎉 Successfully joined the trip! ${response.data.message}`);
+        alert(`Successfully joined the trip! ${response.data.message}`);
         // Refresh trips to update available spots
         fetchTrips();
       } else {
-        alert(`❌ ${response.data.message || 'Failed to join trip'}`);
+        alert(`${response.data.message || 'Failed to join trip'}`);
       }
     } catch (error) {
       console.error('Error joining trip:', error);
-      alert(`❌ ${error.response?.data?.message || 'Failed to join trip. Please try again.'}`);
+      alert(`${error.response?.data?.message || 'Failed to join trip. Please try again.'}`);
     }
   };
 
@@ -193,7 +210,7 @@ export default function AllTrips() {
           disabled={loading}
           className="flex items-center text-white hover:text-[#f8d56b] font-medium text-base mb-4 sm:mb-0 disabled:opacity-50"
         >
-          <div className={`mr-2 ${loading ? 'animate-spin' : ''}`}>🔄</div>
+          <FiRefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
@@ -406,14 +423,15 @@ export default function AllTrips() {
 
                     {/* Status Badges */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2">
-                      <div className={`text-white text-sm font-semibold px-3 py-1 rounded-full shadow ${
+                      <div className={`text-white text-sm font-semibold px-3 py-1 rounded-full shadow flex items-center ${
                         trip.spots > 0 ? 'bg-green-500' : 'bg-red-500'
                       }`}>
+                        <FiUsers className="mr-1" />
                         {trip.spots > 0 ? `${trip.spots} Spots Left` : 'FULL'}
                       </div>
                       {trip.status === 'ongoing' && (
-                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-                          🔴 LIVE
+                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow flex items-center">
+                          <BsRecord2Fill className="mr-1" color="red" /> LIVE
                         </div>
                       )}
                     </div>
@@ -485,7 +503,11 @@ export default function AllTrips() {
                             : 'bg-[#f8a95d] hover:bg-[#f87c6d] text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                         }`}
                       >
-                        {trip.spots === 0 ? '🚫 Trip Full' : `🎒 Join Trip (${trip.spots} spots left)`}
+                        {trip.spots === 0 ? (
+                          <><FiX className="inline mr-1" /> Trip Full</>
+                        ) : (
+                          <><FiActivity className="inline mr-1" /> Join Trip ({trip.spots} spots left)</>
+                        )}
                       </button>
                     </div>
                   </div>

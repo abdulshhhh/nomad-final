@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { FiHome, FiFilter, FiChevronDown, FiChevronUp, FiMap, FiCalendar, FiUsers, FiMapPin } from "react-icons/fi";
+import { 
+  FiCalendar, FiMapPin, FiUsers, FiDollarSign, 
+  FiHome, FiTruck, FiActivity 
+} from 'react-icons/fi';
 
 export default function TripDetailsPage() {
   const navigate = useNavigate();
@@ -20,6 +23,9 @@ export default function TripDetailsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [showTripDetails, setShowTripDetails] = useState(false);
+
+  // Add this state to store the cost breakdown
+  const [costBreakdown, setCostBreakdown] = useState(null);
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -78,7 +84,11 @@ export default function TripDetailsPage() {
                 spots: trip.maxPeople - (trip.joinedMembers ? trip.joinedMembers.length : 0),
                 maxSpots: trip.maxPeople,
                 participants: trip.joinedMembers ? trip.joinedMembers.length : 0,
-                image: trip.coverImage || "/assets/images/default-trip.jpeg"
+                image: trip.coverImage || "/assets/images/default-trip.jpeg",
+                // Include accommodation data
+                accommodation: trip.accommodation || "Will discuss further",
+                // Generate activities based on trip category
+                activities: generateActivitiesFromCategory(trip.category)
               };
             } catch (err) {
               console.log(`Could not fetch details for trip ${trip._id}:`, err.message);
@@ -508,3 +518,71 @@ export default function TripDetailsPage() {
     </div>
   );
 }
+
+// Add this helper function to generate activities based on trip category
+const generateActivitiesFromCategory = (category) => {
+  const activityMap = {
+    'Adventure': ['Hiking', 'Rock Climbing', 'Zip-lining', 'Rafting', 'Paragliding'],
+    'Beach': ['Swimming', 'Snorkeling', 'Beach Volleyball', 'Sunbathing', 'Beach Parties'],
+    'City': ['City Tours', 'Museum Visits', 'Shopping', 'Local Cuisine Tasting', 'Nightlife'],
+    'Cultural': ['Historical Site Visits', 'Local Festivals', 'Art Galleries', 'Traditional Performances', 'Cooking Classes'],
+    'Mountain': ['Trekking', 'Skiing', 'Mountain Biking', 'Photography', 'Camping'],
+    'Road Trip': ['Scenic Drives', 'Local Stops', 'Photography', 'Camping', 'Local Food Tasting']
+  };
+  
+  return activityMap[category] || ['Sightseeing', 'Local Cuisine', 'Photography', 'Shopping', 'Relaxation'];
+}
+
+// Add the calculateCostBreakdown function
+const calculateCostBreakdown = (trip) => {
+  if (!trip || !trip.budget) return null;
+  
+  const totalBudget = parseFloat(trip.budget.amount || trip.budget);
+  const currency = trip.budget.currency || trip.currency || 'INR';
+  
+  // Different breakdown based on accommodation setting
+  let accommodationCost = 0;
+  let transportCost = 0;
+  let mealsCost = 0;
+  let activitiesCost = 0;
+  let baseCost = 0;
+  
+  if (trip.accommodation === 'Included') {
+    // If accommodation is included, allocate 40% of budget to it
+    accommodationCost = Math.round(totalBudget * 0.4);
+    transportCost = Math.round(totalBudget * 0.3);
+    mealsCost = Math.round(totalBudget * 0.15);
+    activitiesCost = Math.round(totalBudget * 0.15);
+    baseCost = totalBudget - accommodationCost - transportCost - mealsCost - activitiesCost;
+  } else if (trip.accommodation === 'Not included') {
+    // If accommodation is not included, allocate more to other categories
+    accommodationCost = 0;
+    transportCost = Math.round(totalBudget * 0.4);
+    mealsCost = Math.round(totalBudget * 0.3);
+    activitiesCost = Math.round(totalBudget * 0.2);
+    baseCost = Math.round(totalBudget * 0.1);
+  } else {
+    // Default breakdown for "Will discuss further"
+    baseCost = totalBudget;
+    accommodationCost = 0;
+    transportCost = 0;
+    mealsCost = 0;
+    activitiesCost = 0;
+  }
+  
+  return {
+    basePrice: { amount: baseCost, currency },
+    accommodation: { amount: accommodationCost, currency },
+    transport: { amount: transportCost, currency },
+    meals: { amount: mealsCost, currency },
+    activities: { amount: activitiesCost, currency },
+    total: { amount: totalBudget, currency }
+  };
+};
+
+// Update the useEffect to calculate cost breakdown when trip is selected
+useEffect(() => {
+  if (selectedTrip) {
+    setCostBreakdown(calculateCostBreakdown(selectedTrip));
+  }
+}, [selectedTrip]);

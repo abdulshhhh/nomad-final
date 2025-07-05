@@ -395,7 +395,9 @@ export default function TripMemories({ tripType, onClose, tripsData = [] }) {
                         <p className="font-medium text-[#2c5e4a] text-sm sm:text-base mb-1 truncate">{memory.caption}</p>
                         <div className="flex justify-between items-center text-[#5E5854] text-xs sm:text-sm">
                           <span className="truncate max-w-[60%]">{memory.location}</span>
-                          <span>{memory.date}</span>
+                          <div className="text-sm text-gray-500 flex items-center">
+                            <FiCalendar className="mr-1" /> {memory.date}
+                          </div>
                         </div>
                       </div>
                     </div>

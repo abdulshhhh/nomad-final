@@ -238,10 +238,10 @@ class TripAutoCompletionService {
         tripId: trip._id
       });
 
-      console.log(`🔄 Emitted real-time updates for trip completion: ${trip.destination}`);
+      console.log(`Emitted real-time updates for trip completion: ${trip.destination}`);
 
     } catch (error) {
-      console.error('❌ Error emitting trip completion updates:', error);
+      console.error('Error emitting trip completion updates:', error);
     }
   }
 
