@@ -1117,7 +1117,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           {
             id: Date.now(),
             type: "warning", // Changed to warning to indicate penalty
-            title: "Trip Abandoned 🚨",
+            title: "Trip Abandoned",
             message: penaltyMessage,
             date: new Date().toISOString(),
             read: false,
@@ -3058,7 +3058,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                             onClick={() => handleAbandonTrip(managedTrip)}
                             className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors text-sm font-medium"
                           >
-                            🚨 Abandon Trip
+                            Abandon Trip
                           </button>
                         </div>
                       </div>
@@ -3069,7 +3069,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                       <div className="bg-white rounded-xl p-4 border border-[#d1c7b7]">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-lg font-bold text-[#2c5e4a]">
-                            🚀 Live Participants ({tripParticipants.length}/{managedTrip?.maxPeople || 0})
+                              Live Participants ({tripParticipants.length}/{managedTrip?.maxPeople || 0})
                           </h4>
                           <div className="flex items-center space-x-3">
                             <button
@@ -3106,7 +3106,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                               }}
                               className="text-xs bg-[#f8d56b] hover:bg-[#f8a95d] text-[#2c5e4a] px-2 py-1 rounded-full transition-colors"
                             >
-                              🔄 Refresh
+                            Refresh
                             </button>
                             <div className="flex items-center space-x-2">
                               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -3122,7 +3122,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                             <p className="text-sm">Share your trip to get more joiners!</p>
                             <div className="mt-4 p-3 bg-[#f8f4e3] rounded-lg border border-[#d1c7b7]">
                               <p className="text-xs text-[#2c5e4a]">
-                                💡 Tip: Use the "Export Report" button to download participant data anytime
+                                 Tip: Use the "Export Report" button to download participant data anytime
                               </p>
                             </div>
                           </div>

@@ -143,14 +143,14 @@ export default function NotificationSystem({
                       {notification.penalty && notification.coinsLost && (
                         <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
                           <p className="text-xs text-red-700 font-bold flex items-center">
-                            💰 Coins Lost: {Math.abs(notification.coinsLost)}
-                            <span className="ml-2 text-red-600">⚠️ Penalty Applied</span>
+                             Coins Lost: {Math.abs(notification.coinsLost)}
+                            <span className="ml-2 text-red-600"> Penalty Applied</span>
                           </p>
                         </div>
                       )}
                       {notification.tripDestination && (
                         <p className="text-xs text-[#f87c6d] font-medium mt-1">
-                          📍 {notification.tripDestination}
+                          Trip: {notification.tripDestination}
                         </p>
                       )}
                       <p className="text-xs text-[#204231]/60 mt-2">
