@@ -6,6 +6,7 @@ import { TripsProvider } from "./context/TripsContext";
 import AllTrips from "./components/AllTrips";
 import LeaderboardPage from './components/LeaderboardPage';
 import AdminRoutes from "./routes/AdminRoutes";
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy loaded components
 const Landing = lazy(() => import('./components/Landing'));
@@ -133,43 +134,45 @@ const App = () => {
 
   return (
     <Suspense fallback={<Loading onLoadingComplete={() => {}} />}>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<LoginWrapper handleAuthSuccess={handleAuthSuccess} />} />
-        <Route path="/signup" element={<SignUpWrapper handleAuthSuccess={handleAuthSuccess} />} />
-        <Route path="/oauth-success" element={<OAuthSuccess />} />
-        <Route path="/oauth-error" element={<OAuthError />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard
-                onLogout={handleLogout}
-                currentUser={currentUser}
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-              />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={<Profile currentUser={currentUser} />}
-        />
-        <Route path="/all-trips" element={<AllTrips />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        {/* 🔐 ADMIN DASHBOARD ROUTE */}
-        <Route
-          path="/admin/*"
-          element={
-            <AdminRoute>
-              <AdminRoutes />
-            </AdminRoute>
-          }
-        />
-        {/* Redirect unknown routes to landing */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <ErrorBoundary fallback={<div className="error-page">Something went wrong. Please refresh the page.</div>}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<LoginWrapper handleAuthSuccess={handleAuthSuccess} />} />
+          <Route path="/signup" element={<SignUpWrapper handleAuthSuccess={handleAuthSuccess} />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
+          <Route path="/oauth-error" element={<OAuthError />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard
+                  onLogout={handleLogout}
+                  currentUser={currentUser}
+                  darkMode={darkMode}
+                  setDarkMode={setDarkMode}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={<Profile currentUser={currentUser} />}
+          />
+          <Route path="/all-trips" element={<AllTrips />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          {/* 🔐 ADMIN DASHBOARD ROUTE */}
+          <Route
+            path="/admin/*"
+            element={
+              <AdminRoute>
+                <AdminRoutes />
+              </AdminRoute>
+            }
+          />
+          {/* Redirect unknown routes to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </Suspense>
   );
 };
