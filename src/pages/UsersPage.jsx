@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FiHome, FiFilter, FiChevronDown, FiChevronUp, FiUsers, FiTrash2, FiAlertCircle, FiDownload } from "react-icons/fi";
 import { BsCircleFill } from "react-icons/bs";
+import io from 'socket.io-client';
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function UsersPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState({});
+  const [socket, setSocket] = useState(null);
   
   // Filtering and sorting states
   const [sortBy, setSortBy] = useState("name");
@@ -107,7 +109,23 @@ export default function UsersPage() {
       fetchOnlineStatus();
     }, 60000); // Refresh every minute
     
-    return () => clearInterval(statusInterval);
+    // Connect to socket
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+    
+    // Listen for online status updates
+    newSocket.on('userStatusUpdate', (data) => {
+      setOnlineUsers(prevStatus => ({
+        ...prevStatus,
+        [data.userId]: data.isOnline
+      }));
+    });
+    
+    // Clean up socket on unmount
+    return () => {
+      clearInterval(statusInterval);
+      if (socket) socket.disconnect();
+    };
   }, [BACKEND_URL]);
   
   const fetchOnlineStatus = async () => {
