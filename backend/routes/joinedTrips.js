@@ -36,7 +36,7 @@ router.get('/:userId', async (req, res) => {
       date: trip.fromDate,
       fromDate: trip.fromDate,
       toDate: trip.toDate,
-      image: trip.image || '/assets/images/default-trip.jpg',
+      image: trip.image || '/assets/images/default-trip.jpeg',
       organizer: trip.createdBy?.fullName || 'Unknown',
       organizerId: trip.createdBy?._id,
       budget: trip.budget,

@@ -313,7 +313,7 @@ export default function DestinationsPage() {
                     alt={destination.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = "/assets/images/default-trip.jpg";
+                      e.target.src = "/assets/images/default-trip.jpeg";
                     }}
                   />
                 </div>

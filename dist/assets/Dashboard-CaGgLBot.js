@@ -432,7 +432,7 @@ function Dashboard({ onLogout }) {
       category: newTrip.category,
       spots: parseInt(newTrip.maxPeople, 10),
       maxSpots: parseInt(newTrip.maxPeople, 10),
-      image: newTrip.coverImage || "/assets/images/default-trip.jpg",
+      image: newTrip.coverImage || "/assets/images/default-trip.jpeg",
       organizer: "Current User", // Replace with actual current user name
       organizerId: "current_user_id", // Replace with actual current user ID
       organizerAvatar: "/assets/images/sarachen.jpeg", // Replace with actual current user avatar

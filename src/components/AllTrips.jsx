@@ -66,7 +66,7 @@ export default function AllTrips() {
           date: `${new Date(trip.fromDate).toLocaleDateString()} - ${new Date(trip.toDate).toLocaleDateString()}`,
           fromDate: trip.fromDate,
           toDate: trip.toDate,
-          image: trip.coverImage || "/assets/images/default-trip.jpg",
+          image: trip.coverImage || "/assets/images/default-trip.jpeg",
           spots: Math.max(0, trip.maxPeople - (trip.currentParticipants || 0)),
           maxSpots: trip.maxPeople,
           currentParticipants: trip.currentParticipants || 0,
@@ -399,7 +399,7 @@ export default function AllTrips() {
                       alt={trip.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = "/assets/images/default-trip.jpg";
+                        e.target.src = "/assets/images/default-trip.jpeg";
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

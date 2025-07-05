@@ -78,7 +78,7 @@ export default function TripDetailsPage() {
                 spots: trip.maxPeople - (trip.joinedMembers ? trip.joinedMembers.length : 0),
                 maxSpots: trip.maxPeople,
                 participants: trip.joinedMembers ? trip.joinedMembers.length : 0,
-                image: trip.coverImage || "/assets/images/default-trip.jpg"
+                image: trip.coverImage || "/assets/images/default-trip.jpeg"
               };
             } catch (err) {
               console.log(`Could not fetch details for trip ${trip._id}:`, err.message);
@@ -95,7 +95,7 @@ export default function TripDetailsPage() {
                 spots: trip.maxPeople,
                 maxSpots: trip.maxPeople,
                 participants: 0,
-                image: trip.coverImage || "/assets/images/default-trip.jpg"
+                image: trip.coverImage || "/assets/images/default-trip.jpeg"
               };
             }
           })

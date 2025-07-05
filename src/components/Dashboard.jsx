@@ -157,7 +157,7 @@ function Profile({ user, onClose, onMessage, onPhotoClick }) {
                   className="flex items-center bg-white p-3 rounded-lg border border-[#d1c7b7]"
                 >
                   <img
-                    src={trip.image || "/assets/images/default-trip.jpg"}
+                    src={trip.image || "/assets/images/default-trip.jpeg"}
                     alt={trip.title || trip.destination}
                     className="w-16 h-16 rounded-lg object-cover mr-4"
                   />
@@ -575,7 +575,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             spots: trip.maxPeople - (trip.numberOfPeople || 0), // Available spots
             maxSpots: trip.maxPeople,
             currentParticipants: trip.numberOfPeople || 0, // Current joined count
-            image: trip.coverImage || "/assets/images/default-trip.jpg",
+            image: trip.coverImage || "/assets/images/default-trip.jpeg",
             description: trip.description || "Experience the journey of a lifetime with fellow travelers.",
             category: trip.category,
             genderPreference: trip.genderPreference,
@@ -2165,12 +2165,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 >
                   <div className="relative">
                     <img
-                      src={trip.image || trip.coverImage || "/assets/images/default-trip.jpg"}
+                      src={trip.image || trip.coverImage || "/assets/images/default-trip.jpeg"}
                       alt={trip.title}
                       className="w-full h-40 sm:h-48 object-cover"
                       onError={(e) => {
                         console.log('🖼️ Image failed to load for trip:', trip.title, 'Original src:', e.target.src);
-                        e.target.src = "/assets/images/default-trip.jpg";
+                        e.target.src = "/assets/images/default-trip.jpeg";
                       }}
                     />
                     <div className="absolute top-4 right-4">
@@ -2287,7 +2287,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                       const tripForModal = {
                         ...trip,
                         title: trip.title || trip.destination,
-                        image: trip.image || trip.coverImage || '/assets/images/default-trip.jpg',
+                        image: trip.image || trip.coverImage || '/assets/images/default-trip.jpeg',
                         organizer: trip.organizer || 'Unknown',
                         organizerId: trip.organizerId || trip.createdBy,
                         spots: trip.spots || (trip.maxPeople - trip.numberOfPeople),
@@ -2316,12 +2316,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                     }}
                   >
                     <img
-                      src={trip.image || trip.coverImage || '/assets/images/default-trip.jpg'}
+                      src={trip.image || trip.coverImage || '/assets/images/default-trip.jpeg'}
                       alt={trip.title || trip.destination}
                       className="w-full h-40 object-cover"
                       onError={(e) => {
                         console.log('🖼️ Upcoming trip image failed to load:', trip.title, 'Original src:', e.target.src);
-                        e.target.src = '/assets/images/default-trip.jpg';
+                        e.target.src = '/assets/images/default-trip.jpeg';
                       }}
                     />
                     <div className="p-4">
@@ -2920,7 +2920,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                 id: managedTrip._id || managedTrip.id,
                                 title: managedTrip.destination || managedTrip.title,
                                 destination: managedTrip.destination,
-                                image: managedTrip.coverImage || managedTrip.image || "/assets/images/default-trip.jpg",
+                                image: managedTrip.coverImage || managedTrip.image || "/assets/images/default-trip.jpeg",
                                 organizerId: managedTrip.createdBy || managedTrip.organizerId || effectiveUser.id,
                                 organizer: managedTrip.organizerName || effectiveUser.fullName,
                                 organizerAvatar: managedTrip.organizerAvatar || effectiveUser.avatar || "/assets/images/default-avatar.jpg",
@@ -3263,12 +3263,12 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                   >
                     <div className="relative h-48 sm:h-64">
                       <img
-                        src={trip.coverImage || "/assets/images/default-trip.jpg"}
+                        src={trip.coverImage || "/assets/images/default-trip.jpeg"}
                         alt={trip.destination}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           console.log('🖼️ Completed trip image failed to load:', trip.destination, 'Original src:', e.target.src);
-                          e.target.src = "/assets/images/default-trip.jpg";
+                          e.target.src = "/assets/images/default-trip.jpeg";
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4 sm:p-6">
@@ -3392,7 +3392,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                     alt={destination.name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => {
-                      e.target.src = "/assets/images/default-trip.jpg";
+                      e.target.src = "/assets/images/default-trip.jpeg";
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-3 sm:p-4">

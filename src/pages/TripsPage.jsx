@@ -455,7 +455,7 @@ export default function TripsPage() {
                 >
                   <div className="relative">
                     <img
-                      src={trip.coverImage || "/assets/images/default-trip.jpg"}
+                      src={trip.coverImage || "/assets/images/default-trip.jpeg"}
                       alt={trip.destination}
                       className="w-16 h-16 rounded-lg border-2 border-[#f8d56b] object-cover mb-2 sm:mb-0 sm:mr-4"
                     />

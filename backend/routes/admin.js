@@ -89,7 +89,7 @@ router.get('/trips', authenticateAdmin, async (req, res) => {
         date: dateRange,
         status: status,
         price: `${trip.budget?.currency || 'USD'} ${(trip.budget?.amount || 0).toLocaleString()}`,
-        image: trip.coverImage || '/assets/images/default-trip.jpg',
+        image: trip.coverImage || '/assets/images/default-trip.jpeg',
         organizer: trip.createdBy?.fullName || 'Unknown',
         organizerId: trip.createdBy?._id,
         maxPeople: trip.maxPeople,
