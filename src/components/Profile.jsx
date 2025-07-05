@@ -535,7 +535,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                     <div className="flex space-x-3 mt-0.5 mb-1">
                       <div className="bg-gradient-to-r from-yellow-300/30 to-yellow-500/20 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center border border-yellow-300/20">
                         <FaPlaneDeparture className="mr-1 w-3 h-3 text-yellow-300" />
-                        <span className="text-white text-xs font-semibold">{(profileData.tripsPosted || 0) + (profileData.tripsJoined || 0)} trips</span>
+                        <span className="text-white text-xs font-semibold">{userStats.tripsHosted + userStats.tripsJoined} trips</span>
                       </div>
                       <div className="bg-gradient-to-r from-yellow-300/30 to-yellow-500/20 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center border border-yellow-300/20">
                         <FiGlobe className="mr-1 w-3 h-3 text-yellow-300" />
