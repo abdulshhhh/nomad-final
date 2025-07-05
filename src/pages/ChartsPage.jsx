@@ -250,12 +250,7 @@ export default function ChartsPage() {
         tripParticipation: {
           labels: ['No Data'],
           data: [1],
-        },
-        userTypes: {
-          labels: ['No Data'],
-          data: [1],
-          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
-        },
+        }
       };
     }
 
@@ -840,8 +835,8 @@ export default function ChartsPage() {
                       />
                     </div>
                   </div>
-
-                  {/* Bar Chart - Trip Participation */}
+                  
+                  {/* Trip Participation Chart */}
                   <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4">
                     <div className="flex items-center mb-4">
                       <FiBarChart2 className="text-[#2c5e4a] text-xl mr-2" />
@@ -856,8 +851,8 @@ export default function ChartsPage() {
                             {
                               label: 'Number of Users',
                               data: userData.tripParticipation.data,
-                              backgroundColor: 'rgba(248, 169, 93, 0.7)',
-                              borderColor: 'rgba(248, 169, 93, 1)',
+                              backgroundColor: 'rgba(248, 213, 107, 0.7)',
+                              borderColor: 'rgba(248, 213, 107, 1)',
                               borderWidth: 1,
                             },
                           ],
@@ -865,30 +860,8 @@ export default function ChartsPage() {
                       />
                     </div>
                   </div>
-
-                  {/* Pie Chart - User Types */}
-                  <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4">
-                    <div className="flex items-center mb-4">
-                      <FiPieChart className="text-[#2c5e4a] text-xl mr-2" />
-                      <h2 className="text-lg font-bold text-[#2c5e4a]">User Types</h2>
-                    </div>
-                    <div className="h-80">
-                      <Pie
-                        options={pieOptions}
-                        data={{
-                          labels: userData.userTypes.labels,
-                          datasets: [
-                            {
-                              data: userData.userTypes.data,
-                              backgroundColor: userData.userTypes.backgroundColor,
-                              borderColor: 'white',
-                              borderWidth: 2,
-                            },
-                          ],
-                        }}
-                      />
-                    </div>
-                  </div>
+                  
+                  {/* User Types chart removed */}
                 </div>
               </div>
             )}
@@ -1015,25 +988,14 @@ function processUsersData(users) {
     data: [0, 0, 0, 0],
   };
 
-  // User types
-  const userTypes = {
-    labels: ['Organizers', 'Participants', 'Both'],
-    data: [0, 0, 0],
-    backgroundColor: [
-      'rgba(255, 206, 86, 0.7)',
-      'rgba(75, 192, 192, 0.7)',
-      'rgba(153, 102, 255, 0.7)',
-    ],
-  };
-
   users.forEach(user => {
-    // Process joinedByMonth using createdAt
-    const joinDate = new Date(user.joinDate || user.createdAt);
-    if (!isNaN(joinDate.getTime())) {
-      const monthIndex = joinDate.getMonth();
-      joinedByMonth.data[monthIndex]++;
+    // Process join date for monthly chart
+    const joinDate = user.dateJoined || user.createdAt;
+    if (joinDate) {
+      const month = new Date(joinDate).getMonth();
+      joinedByMonth.data[month]++;
     }
-
+    
     // Process trip participation
     const tripsHosted = user.tripsHosted || 0;
     const tripsJoined = user.tripsJoined || 0;
@@ -1048,24 +1010,12 @@ function processUsersData(users) {
     } else {
       tripParticipation.data[3]++;
     }
-
-    // Process user types
-    if (tripsHosted > 0 && tripsJoined > 0) {
-      userTypes.data[2]++; // Both
-    } else if (tripsHosted > 0) {
-      userTypes.data[0]++; // Organizers
-    } else if (tripsJoined > 0) {
-      userTypes.data[1]++; // Participants
-    } else {
-      userTypes.data[1]++; // Default to participants for new users
-    }
   });
 
   return {
     joinedByMonth,
     ageGroups, // This is actually gender distribution now
     tripParticipation,
-    userTypes,
   };
 }
 
