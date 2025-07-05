@@ -52,8 +52,36 @@ export default function ChartsPage() {
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          color: '#000000'
+        }
       },
+      tooltip: {
+        bodyColor: '#000000',
+        titleColor: '#000000',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderColor: '#d1c7b7',
+        borderWidth: 1
+      }
     },
+    scales: {
+      x: {
+        ticks: {
+          color: '#000000'
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      },
+      y: {
+        ticks: {
+          color: '#000000'
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      }
+    }
   };
 
   const pieOptions = {
@@ -62,8 +90,18 @@ export default function ChartsPage() {
     plugins: {
       legend: {
         position: 'right',
+        labels: {
+          color: '#000000'
+        }
       },
-    },
+      tooltip: {
+        bodyColor: '#000000',
+        titleColor: '#000000',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderColor: '#d1c7b7',
+        borderWidth: 1
+      }
+    }
   };
 
   // Process trips data - make it more resilient to data issues
@@ -357,7 +395,7 @@ export default function ChartsPage() {
                 name="gender"
                 value={filters.gender}
                 onChange={handleFilterChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
               >
                 <option value="all">All Genders</option>
                 <option value="Male">Male</option>
@@ -372,7 +410,7 @@ export default function ChartsPage() {
                 name="joinDateStart"
                 value={filters.joinDateStart}
                 onChange={handleFilterChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
               />
             </div>
             <div>
@@ -382,7 +420,7 @@ export default function ChartsPage() {
                 name="joinDateEnd"
                 value={filters.joinDateEnd}
                 onChange={handleFilterChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
               />
             </div>
           </>
@@ -395,7 +433,7 @@ export default function ChartsPage() {
                 name="tripType"
                 value={filters.tripType}
                 onChange={handleFilterChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
               >
                 <option value="all">All Types</option>
                 <option value="Upcoming">Upcoming</option>
@@ -628,7 +666,36 @@ export default function ChartsPage() {
                     </div>
                     <div className="h-80">
                       <Bar
-                        options={barOptions}
+                        options={{
+                          ...barOptions,
+                          plugins: {
+                            ...barOptions.plugins,
+                            legend: {
+                              ...barOptions.plugins.legend,
+                              labels: {
+                                color: '#000000'
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              ticks: {
+                                color: '#000000'
+                              },
+                              grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                              }
+                            },
+                            y: {
+                              ticks: {
+                                color: '#000000'
+                              },
+                              grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                              }
+                            }
+                          }
+                        }}
                         data={{
                           labels: tripData.monthlyTrips.labels,
                           datasets: [
