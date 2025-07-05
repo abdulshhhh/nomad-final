@@ -70,7 +70,7 @@ export default function TripMemories({ tripType, onClose, currentUser }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-8 max-w-4xl w-full border border-[#d1c7b7] shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-gradient-to-br from-[#f8f4e3] to-[#f0d9b5] rounded-2xl p-8 max-w-4xl w-full border border-[#d1c7b7] shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-3xl font-bold text-[#2c5e4a]">
             {tripType === 'posted' ? 'Trips Posted' : 'Trips Joined'}
@@ -122,7 +122,7 @@ export default function TripMemories({ tripType, onClose, currentUser }) {
                         <span className="text-[#5E5854] text-xs flex items-center">
                           <FiUsers className="mr-1" /> {trip.joinedMembers?.length || trip.numberOfPeople || 0} travelers
                         </span>
-                        <span className="text-[#f8a95d] text-xs font-medium">View Details</span>
+                        
                       </div>
                     </div>
                   </div>
