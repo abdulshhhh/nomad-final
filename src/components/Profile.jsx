@@ -63,6 +63,44 @@ export default function Profile({ currentUser, onClose, onMessage }) {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
 
+  // Add this state variable
+  const [userStats, setUserStats] = useState({
+    tripsHosted: 0,
+    tripsJoined: 0
+  });
+
+  // Add this function to fetch user stats from the leaderboard API
+  const fetchUserStats = async () => {
+    try {
+      const userId = currentUser?.id || currentUser?._id;
+      if (!userId) return;
+      
+      console.log('Fetching user stats from leaderboard for user:', userId);
+      
+      // Use the leaderboard profile endpoint which has all the stats
+      const response = await fetch(`/api/leaderboard/profile/${userId}`);
+      const data = await response.json();
+      
+      console.log('Leaderboard profile data:', data);
+      
+      if (data.success && data.profile) {
+        setUserStats({
+          tripsHosted: data.profile.tripsHosted || 0,
+          tripsJoined: data.profile.tripsJoined || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
+
+  // Call this function when the component mounts
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserStats();
+    }
+  }, [currentUser]);
+
   // Add this function to handle the automatic rotation
   const startSliderInterval = () => {
     // Clear any existing interval first
@@ -691,7 +729,9 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-[#204231] cursor-pointer hover:border-[#204231] transition-colors"
                       >
                         <h3 className="text-base sm:text-lg font-cinzel font-semibold text-[#204231] mb-2">Trips Posted</h3>
-                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2 trips-posted-count">5</p>
+                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2 trips-posted-count">
+                          {userStats.tripsHosted}
+                        </p>
                         <p className="text-[#204231] text-xs sm:text-sm">Click to view details and memories</p>
                       </div>
 
@@ -700,8 +740,10 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-[#204231] cursor-pointer hover:border-[#204231] transition-colors"
                       >
                         <h3 className="text-base sm:text-lg font-cinzel font-semibold text-[#204231] mb-2">Trips Joined</h3>
-                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2 trips-joined-count">3</p>
-                        <p className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">Click to view details and memories</p>
+                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2 trips-joined-count">
+                          {userStats.tripsJoined}
+                        </p>
+                        <p className="text-[#204231] text-xs sm:text-sm">Click to view details and memories</p>
                       </div>
                     </div>
 
