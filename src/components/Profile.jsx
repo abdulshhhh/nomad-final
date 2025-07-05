@@ -714,14 +714,21 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {(Array.isArray(joinedTripsData) && joinedTripsData.length > 0) ? joinedTripsData.map((trip) => (
                           <div key={trip._id} className="bg-yellow-100 rounded-lg p-3 sm:p-4 border border-[#204231] hover:shadow-md transition-shadow">
-                            <img
-                              src={trip.image}
-                              alt={trip.tripTitle}
-                              className="w-full h-24 sm:h-32 object-cover rounded-lg mb-2 sm:mb-3"
-                            />
-                            <h4 className="font-cinzel font-semibold text-gray-800 mb-1 text-sm sm:text-base">{trip.tripTitle}</h4>
+                            <div className="relative h-32 mb-2 rounded-lg overflow-hidden">
+                              <img
+                                src={trip.image || trip.coverImage || "/assets/images/default-trip.jpeg"}
+                                alt={trip.tripTitle || trip.destination}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.log('Image failed to load:', e.target.src);
+                                  e.target.onerror = null; // Prevent infinite loop
+                                  e.target.src = "/assets/images/default-trip.jpeg";
+                                }}
+                              />
+                            </div>
+                            <h4 className="font-cinzel font-semibold text-gray-800 mb-1 text-sm sm:text-base">{trip.tripTitle || trip.destination}</h4>
                             <p className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">{trip.destination}</p>
-                            <p className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">{trip.date}</p>
+                            <p className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">{trip.date || `${new Date(trip.fromDate).toLocaleDateString()} - ${new Date(trip.toDate).toLocaleDateString()}`}</p>
                             <div className="flex justify-between items-center">
                               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                                 Member

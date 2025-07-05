@@ -655,12 +655,18 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     e.preventDefault();
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      // Get token from all possible storage locations
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('authToken') || 
+                    sessionStorage.getItem('token');
+                  
       if (!token) {
         alert("You must be logged in to post a trip.");
         return;
       }
-
+      
+      console.log("Using auth token:", token.substring(0, 10) + "...");  // Log partial token for debugging
+      
       // 🗓️ ROBUST DATE VALIDATION BEFORE SUBMISSION
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -692,18 +698,18 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         }
       });
 
+      // Update the API call with proper token handling
       const response = await axios.post(
-        'http://localhost:5000/api/trips',
+        `${BACKEND_URL}/api/trips`,  // Use BACKEND_URL constant
         formData,
         {
-          headers:
-          {
+          headers: {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`,
           },
         }
       );
-
+      
       if (response.data.success) {
         // Refresh the trips list to get the latest data
         await fetchTrips();
@@ -754,7 +760,22 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       }
     } catch (error) {
       console.error('Error posting trip:', error);
-      alert(`❌ Failed to post trip: ${error.response?.data?.message || error.message}`);
+      
+      // More detailed error logging
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          alert("Your session has expired. Please log in again.");
+          // Optionally redirect to login page
+          // window.location.href = '/login';
+        } else {
+          alert(`Failed to post trip: ${error.response.data.message || error.message}`);
+        }
+      } else {
+        alert(`Failed to post trip: ${error.message}`);
+      }
     }
   };
 

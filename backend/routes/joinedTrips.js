@@ -55,6 +55,20 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
+// Add this endpoint to get count of trips joined by a user
+router.get('/count/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const count = await JoinedTrip.countDocuments({ userId });
+    
+    res.json({ count });
+  } catch (error) {
+    console.error('Error counting joined trips:', error);
+    res.status(500).json({ error: 'Failed to count joined trips' });
+  }
+});
+
 // POST route to join a trip
 router.post('/', authenticate, async (req, res) => {
   const { userId, tripId, googleAccountName } = req.body;
