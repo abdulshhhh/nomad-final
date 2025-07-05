@@ -52,6 +52,11 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Add a root-level health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Log requests
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);

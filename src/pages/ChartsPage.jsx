@@ -45,6 +45,9 @@ export default function ChartsPage() {
     tripType: 'all'
   });
 
+  // Add state for profile data
+  const [profilesData, setProfilesData] = useState([]);
+
   // Define chart options outside of render to avoid re-creation
   const barOptions = {
     responsive: true,
@@ -242,10 +245,14 @@ export default function ChartsPage() {
           labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
           data: Array(12).fill(0),
         },
-        ageGroups: {
-          labels: ['No Data'],
-          data: [1],
-          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
+        genderDistribution: {
+          labels: ['Male', 'Female', 'Prefer not to say'],
+          data: [0, 0, 0],
+          backgroundColor: [
+            'rgba(54, 162, 235, 0.7)', // Male - Blue
+            'rgba(255, 99, 132, 0.7)', // Female - Pink
+            'rgba(201, 203, 207, 0.7)', // Prefer not to say - Gray
+          ],
         },
         tripParticipation: {
           labels: ['No Data'],
@@ -260,27 +267,48 @@ export default function ChartsPage() {
         data: Array(12).fill(0),
       };
 
-      // Gender distribution
+      // Simplified gender distribution with exactly three categories
       const genderCounts = {
         'Male': 0,
         'Female': 0,
-        'Other': 0,
-        'Not specified': 0
+        'Prefer not to say': 0
       };
       
       users.forEach(user => {
-        const gender = user.gender || 'Not specified';
-        genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+        // Handle case sensitivity and normalize gender values
+        let gender = 'Prefer not to say';
+        if (user.gender) {
+          const normalizedGender = user.gender.toLowerCase().trim();
+          if (normalizedGender === 'male') {
+            gender = 'Male';
+          } else if (normalizedGender === 'female') {
+            gender = 'Female';
+          } else {
+            // All other values go to "Prefer not to say"
+            gender = 'Prefer not to say';
+          }
+        }
+        genderCounts[gender]++;
+        
+        // Process join date for monthly chart
+        if (user.joinDate || user.createdAt) {
+          const date = new Date(user.joinDate || user.createdAt);
+          if (!isNaN(date.getTime())) {
+            const month = date.getMonth();
+            joinedByMonth.data[month]++;
+          }
+        }
       });
       
-      const ageGroups = {
+      console.log("Processed gender counts:", genderCounts);
+      
+      const genderDistribution = {
         labels: Object.keys(genderCounts),
         data: Object.values(genderCounts),
         backgroundColor: [
-          'rgba(54, 162, 235, 0.7)',
-          'rgba(255, 99, 132, 0.7)',
-          'rgba(153, 102, 255, 0.7)',
-          'rgba(201, 203, 207, 0.7)',
+          'rgba(54, 162, 235, 0.7)', // Male - Blue
+          'rgba(255, 99, 132, 0.7)', // Female - Pink
+          'rgba(201, 203, 207, 0.7)', // Prefer not to say - Gray
         ],
       };
 
@@ -338,7 +366,7 @@ export default function ChartsPage() {
 
       return {
         joinedByMonth,
-        ageGroups, // This is actually gender distribution now
+        genderDistribution,
         tripParticipation,
         userTypes,
       };
@@ -350,7 +378,7 @@ export default function ChartsPage() {
           labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
           data: Array(12).fill(0),
         },
-        ageGroups: {
+        genderDistribution: {
           labels: ['Error'],
           data: [1],
           backgroundColor: ['rgba(255, 99, 132, 0.7)'],
@@ -393,9 +421,9 @@ export default function ChartsPage() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
               >
                 <option value="all">All Genders</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="prefer not to say">Prefer not to say</option>
               </select>
             </div>
             <div>
@@ -470,16 +498,45 @@ export default function ChartsPage() {
           return;
         }
         
-        console.log("Fetching data...");
+        console.log("Fetching data with token:", token.substring(0, 10) + "...");
         
-        // Fetch stats from backend
-        const statsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/stats`, {
+        // Fetch users data using the same endpoint as in the admin user details page
+        const usersResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/users`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
         });
         
-        console.log("Stats response:", statsResponse.data);
+        console.log("Users response:", usersResponse.data);
+        
+        if (!usersResponse.data || !usersResponse.data.success) {
+          throw new Error("Failed to fetch users data");
+        }
+        
+        setUsersResponse(usersResponse.data);
+        
+        // Process the data directly from the API response
+        const processedUserData = processUsersData(usersResponse.data.users);
+        setUserData(processedUserData);
+        
+        // Fetch additional profile data if needed
+        if (usersResponse.data.users && usersResponse.data.users.length > 0) {
+          try {
+            const profilePromises = usersResponse.data.users.map(async (user) => {
+              const userId = user._id || user.id;
+              const profileResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/leaderboard/profile/${userId}`,
+                { headers: { "Authorization": `Bearer ${token}` } }
+              );
+              return profileResponse.data.success ? profileResponse.data.profile : null;
+            });
+            
+            const profiles = await Promise.all(profilePromises);
+            setProfilesData(profiles.filter(profile => profile !== null));
+          } catch (profileErr) {
+            console.error("Error fetching profile data:", profileErr);
+          }
+        }
         
         // Fetch trips data
         const tripsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/trips`, {
@@ -490,40 +547,23 @@ export default function ChartsPage() {
         
         console.log("Trips response:", tripsResponse.data);
         
-        // Fetch users data
-        const usersResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/users`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        
-        console.log("Users response:", usersResponse.data);
-        
-        if (statsResponse.data.success && tripsResponse.data.success && usersResponse.data.success) {
-          // Store original responses
+        if (tripsResponse.data.success) {
+          // Store original trips response
           setTripsResponse(tripsResponse.data);
-          setUsersResponse(usersResponse.data);
           
           // Process trip data
           const trips = tripsResponse.data.trips;
-          const users = usersResponse.data.users;
-          
-          console.log("Processing trip data...");
           const tripData = processTripsData(trips);
           
-          console.log("Processing user data...");
-          const userData = processUsersData(users);
-          
           setTripData(tripData);
-          setUserData(userData);
         } else {
-          setError("Failed to load data from server");
+          setError("Failed to load trips data from server");
         }
         
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching chart data:", err);
-        setError("Failed to load chart data. Please try again later.");
+        console.error("Error fetching data:", err);
+        setError(`Error loading data: ${err.message}`);
         setLoading(false);
       }
     };
@@ -812,27 +852,49 @@ export default function ChartsPage() {
                     </div>
                   </div>
 
-                  {/* Pie Chart - Gender Distribution */}
+                  {/* Gender Distribution Pie Chart */}
                   <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4">
                     <div className="flex items-center mb-4">
                       <FiPieChart className="text-[#2c5e4a] text-xl mr-2" />
                       <h2 className="text-lg font-bold text-[#2c5e4a]">Gender Distribution</h2>
                     </div>
                     <div className="h-80">
-                      <Pie
-                        options={pieOptions}
-                        data={{
-                          labels: userData.ageGroups.labels,
-                          datasets: [
-                            {
-                              data: userData.ageGroups.data,
-                              backgroundColor: userData.ageGroups.backgroundColor,
-                              borderColor: 'white',
-                              borderWidth: 2,
-                            },
-                          ],
-                        }}
-                      />
+                      {userData && userData.genderDistribution ? (
+                        <Pie
+                          options={{
+                            ...pieOptions,
+                            plugins: {
+                              ...pieOptions.plugins,
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                  }
+                                }
+                              }
+                            }
+                          }}
+                          data={{
+                            labels: userData.genderDistribution.labels,
+                            datasets: [
+                              {
+                                data: userData.genderDistribution.data,
+                                backgroundColor: userData.genderDistribution.backgroundColor,
+                                borderColor: 'white',
+                                borderWidth: 2,
+                              },
+                            ],
+                          }}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-500">Loading gender data...</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -971,7 +1033,7 @@ function processUsersData(users) {
     genderCounts[gender] = (genderCounts[gender] || 0) + 1;
   });
   
-  const ageGroups = {
+  const genderDistribution = {
     labels: Object.keys(genderCounts),
     data: Object.values(genderCounts),
     backgroundColor: [
@@ -1014,7 +1076,7 @@ function processUsersData(users) {
 
   return {
     joinedByMonth,
-    ageGroups, // This is actually gender distribution now
+    genderDistribution,
     tripParticipation,
   };
 }

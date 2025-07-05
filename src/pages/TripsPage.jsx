@@ -42,47 +42,54 @@ export default function TripsPage() {
             }
           });
           console.log("Backend health check response:", healthCheck.status);
+          
+          // Even if health check returns 404, continue if the server is responding
+          if (healthCheck.status === 404) {
+            console.log("Health endpoint not found, but server is responding");
+          }
         } catch (healthError) {
           console.error("Backend health check failed:", healthError.message);
           setError(`Cannot connect to backend server at ${BACKEND_URL}. Please check if the server is running.`);
         }
         
-        // Try multiple possible endpoints
+        // Try multiple possible endpoints with better error handling
         const possibleEndpoints = [
-          '/api/trips'  // This is the correct endpoint based on your backend code
+          '/api/trips',  // This is the correct endpoint based on your backend code
+          '/api/trips/all' // Alternative endpoint to try
         ];
 
         let tripsData = null;
+        let lastError = null;
 
         for (const endpoint of possibleEndpoints) {
           try {
             console.log(`Trying endpoint: ${BACKEND_URL}${endpoint}`);
             const response = await axios.get(`${BACKEND_URL}${endpoint}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {},
-              timeout: 5000,  // Increased timeout
+              timeout: 8000,  // Increased timeout
               validateStatus: function (status) {
                 return status < 500; // Only treat 500+ errors as actual errors
               }
             });
             
-            if (response.status === 200 && response.data) {
-              console.log(`Successful response from ${endpoint}:`, response.data);
-              
-              // Extract trips data from response
-              const extractedData = Array.isArray(response.data) ? response.data : 
-                                   (response.data.trips ? response.data.trips : 
-                                   (response.data.success ? response.data.trips : []));
-              
-              if (extractedData && extractedData.length > 0) {
-                tripsData = extractedData;
-                console.log(`Found ${tripsData.length} trips at endpoint ${endpoint}`);
-                break; // Exit the loop if we found data
-              }
+            console.log(`Response from ${endpoint}:`, response.status);
+            
+            if (response.data && (response.data.trips || Array.isArray(response.data))) {
+              tripsData = response.data.trips || response.data;
+              console.log(`Successfully fetched ${tripsData.length} trips from ${endpoint}`);
+              break; // Exit the loop if we got data
+            } else {
+              console.log(`Endpoint ${endpoint} returned no trips data`);
             }
-          } catch (endpointError) {
-            console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
-            // Continue to next endpoint
+          } catch (err) {
+            lastError = err;
+            console.error(`Endpoint ${endpoint} failed:`, err.message);
           }
+        }
+
+        if (!tripsData && lastError) {
+          console.error("All endpoints failed. Last error:", lastError);
+          setError(`Failed to fetch trips: ${lastError.message}`);
         }
         
         if (tripsData && tripsData.length > 0) {

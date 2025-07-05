@@ -35,6 +35,11 @@ const authenticate = (req, res, next) => {
   }
 };
 
+// Simple health check endpoint
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Multer setup for file uploads with proper limits
 const storage = multer.memoryStorage();
 const upload = multer({
