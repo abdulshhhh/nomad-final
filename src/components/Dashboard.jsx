@@ -410,6 +410,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
           },
           body: JSON.stringify({
             userId: userIdForAPI,
@@ -1886,6 +1887,44 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                             type="date"
                             value={dateRange.to}
                             onChange={(e) => setDateRange({...dateRange, to: e.target.value})}
+                            className="w-full px-3 py-2 border border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#2c5e4a] mb-2">Category</label>
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => setSelectedCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none text-sm"
+                        >
+                          <option value="">All Categories</option>
+                          <option value="beach">Beach</option>
+                          <option value="city">City</option>
+                          <option value="mountain">Mountain</option>
+                          <option value="adventure">Adventure</option>
+                        </select>
+                      </div>
+
+                      {/* Transport */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#2c5e4a] mb-2">Transport</label>
+                        <select
+                          value={selectedTransport}
+                          onChange={(e) => setSelectedTransport(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none text-sm"
+                        >
+                          <option value="">All Transport</option>
+                          <option value="flight">Flight</option>
+                          <option value="train">Train</option>
+                          <option value="car">Car</option>
+                          <option value="bus">Bus</option>
+                        </select>
+                      </div>
+
+                      {/* Max
                             className="w-full px-3 py-2 border border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none text-sm"
                           />
                         </div>
