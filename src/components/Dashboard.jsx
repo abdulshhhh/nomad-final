@@ -232,7 +232,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       title: "Santorini Sunset",
       destination: "Santorini, Greece",
       image: "/assets/images/santorinisunset.jpeg",
-      rating: 4.8,
+      rating: "N/A",
       participants: 6,
       date: "October 2024",
     },
@@ -2248,7 +2248,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                       </span>
                       <div className="flex items-center text-[#2c5e4a]">
                         <FiStar className="mr-1" />
-                        <span className="text-sm">4.8</span>
+                        <span className="text-sm">N/A</span>
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
@@ -2628,7 +2628,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                         </div>
                         <div className="bg-[#f8f4e3] p-3 rounded-lg">
                           <p className="text-2xl font-bold text-[#f87c6d]">
-                            {tripStatistics ? tripStatistics.averageRating : "4.8"}
+                            {tripStatistics ? tripStatistics.averageRating : "N/A"}
                           </p>
                           <p className="text-[#5E5854] text-sm">Rating</p>
                         </div>
@@ -3321,7 +3321,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                           <div className="flex items-center">
                             <span className="flex items-center text-white bg-black/30 px-2 py-1 rounded-full">
                               <FiStar className="text-[#f8d56b] mr-1" />
-                              {trip.rating || '4.8'}
+                              {trip.rating || 'N/A'}
                             </span>
                           </div>
                         </div>

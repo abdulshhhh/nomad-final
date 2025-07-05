@@ -71,7 +71,7 @@ export default function TripMemories({ tripType, onClose, tripsData = [] }) {
       price: "$1,800",
       image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a",
       participants: 4,
-      rating: 4.8,
+      rating: "N/A",
       status: "completed",
       memories: [
         {

@@ -1054,7 +1054,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                           <h3 className="text-lg font-semibold text-[#204231]">Reviews Received</h3>
                           <div className="flex items-center mt-1">
                             <FiStar className="text-yellow-400 fill-yellow-400 mr-1" />
-                            <span className="text-gray-600 font-medium">4.8</span>
+                            <span className="text-gray-600 font-medium">N/A</span>
                             <span className="text-gray-500 text-sm ml-1">({profileData.followers} reviews)</span>
                           </div>
                         </div>
