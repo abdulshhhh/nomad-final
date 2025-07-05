@@ -193,7 +193,8 @@ router.post(
         genderPreference,
         category,
         description,
-        googleAccountName
+        googleAccountName,
+        accommodation
       } = req.body;
 
       // Validate required fields
@@ -277,7 +278,8 @@ router.post(
         googleAccountName: googleAccountName || null,
         createdAt: new Date(),
         status: 'upcoming', // 🚀 Set initial status
-        autoCompleted: false
+        autoCompleted: false,
+        accommodation: accommodation || 'Will discuss further'
       };
 
       const newTrip = new Trip(tripData);

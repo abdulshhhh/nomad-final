@@ -19,6 +19,7 @@ const tripSchema = new mongoose.Schema({
   createdBy:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   googleAccountName: { type: String }, // Google account name of the trip creator
   createdAt:       { type: Date, default: Date.now },
+  accommodation:   { type: String, enum: ['Included', 'Not included', 'Will discuss further'], default: 'Will discuss further' },
 
   // 🚀 REAL-TIME TRIP STATUS SYSTEM
   status:          { type: String, enum: ['upcoming', 'ongoing', 'completed', 'cancelled'], default: 'upcoming' },

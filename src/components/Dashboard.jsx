@@ -268,6 +268,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     description: "",
     coverImage: null,
     googleAccountName: "",
+    accommodation: "Will discuss further", // Add default value
   });
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [showTripDetails, setShowTripDetails] = useState(false);
@@ -3680,6 +3681,23 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                       <option value="Cultural">Cultural</option>
                       <option value="Mountain">Mountain</option>
                       <option value="Road Trip">Road Trip</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-[#5E5854] font-medium mb-2">
+                      Accommodation<span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="accommodation"
+                      value={newTrip.accommodation}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
+                      required
+                    >
+                      <option value="Included">Included</option>
+                      <option value="Not included">Not included</option>
+                      <option value="Will discuss further">Will discuss further</option>
                     </select>
                   </div>
 
