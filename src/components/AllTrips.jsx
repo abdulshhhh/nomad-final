@@ -469,7 +469,7 @@ export default function AllTrips() {
                         <span>{trip.currentParticipants}/{trip.maxSpots} joined</span>
                       </div>
                       <div className="text-[#5E5854] text-sm">
-                        🚗 {trip.transport}
+                         {trip.transport}
                       </div>
                     </div>
 
