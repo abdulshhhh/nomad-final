@@ -649,7 +649,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   };
   const handlePostTrip = async (e) => {
     e.preventDefault();
-
+    
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('authToken');
       if (!token) {
@@ -675,29 +675,11 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         return;
       }
 
-      // Check minimum trip duration (at least 1 day)
-      const tripDurationMs = toDate.getTime() - fromDate.getTime();
-      const tripDurationDays = tripDurationMs / (1000 * 60 * 60 * 24);
-
-      if (tripDurationDays < 1) {
-        alert('❌ Trip must be at least 1 day long.');
+      // Validate required fields
+      if (!newTrip.destination || !newTrip.fromDate || !newTrip.toDate || !newTrip.budget) {
+        alert('❌ Please fill in all required fields.');
         return;
       }
-
-      // Check if trip is not too far in the future (optional - 2 years max)
-      const maxFutureDate = new Date();
-      maxFutureDate.setFullYear(maxFutureDate.getFullYear() + 2);
-
-      if (fromDate > maxFutureDate) {
-        alert('❌ Trip start date cannot be more than 2 years in the future.');
-        return;
-      }
-
-      console.log('✅ Date validation passed:', {
-        fromDate: fromDate.toLocaleDateString(),
-        toDate: toDate.toLocaleDateString(),
-        duration: `${Math.ceil(tripDurationDays)} days`
-      });
 
       const formData = new FormData();
       Object.entries(newTrip).forEach(([key, value]) => {
@@ -725,45 +707,13 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         setShowPostTrip(false);
         setShowSuccessModal(true); // Show the modal here
 
-        // 🚀 AUTO-OPEN TRIP MANAGEMENT MODAL FOR THE NEW TRIP
-        const newTripData = response.data.trip;
-        setTimeout(async () => {
+        // Auto-open trip management after success
+        setTimeout(() => {
           try {
-            const token = localStorage.getItem('token');
-            const headers = {};
-            if (token) {
-              headers['Authorization'] = `Bearer ${token}`;
-            }
-
-            const tripId = newTripData._id || newTripData.id;
-            console.log('Auto-opening trip management for new trip ID:', tripId);
-
-            const participantsResponse = await axios.get(`http://localhost:5000/api/trips/${tripId}/participants`, {
-              headers
-            });
-
-            if (participantsResponse.data.success) {
-              setManagedTrip(participantsResponse.data.trip);
-              setTripParticipants(participantsResponse.data.participants);
+            const newTripId = response.data.trip._id || response.data.trip.id;
+            if (newTripId) {
+              setManagedTrip(response.data.trip);
               setShowTripManagement(true);
-              setShowSuccessModal(false); // Hide success modal when management opens
-
-              // 🚀 SET UP REAL-TIME PARTICIPANT UPDATES
-              if (socket) {
-                socket.emit('joinTripRoom', tripId);
-                socket.on('participantJoined', (data) => {
-                  if (data.tripId === tripId) {
-                    setTripParticipants(prev => [...prev, data.participant]);
-                    setNotifications((prev) => [{
-                      id: Date.now(), type: "info",
-                      title: "New Participant Joined! 👥",
-                      message: `${data.participant.name} joined your trip to ${newTripData.destination}`,
-                      date: new Date().toISOString(),
-                      read: false,
-                    }, ...prev]);
-                  }
-                });
-              }
             }
           } catch (error) {
             console.error('Error auto-opening trip management:', error);
@@ -776,7 +726,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           fromDate: "",
           toDate: "",
           transport: "",
-          currency: "INR",
+          currency: "USD",
           budget: "",
           numberOfPeople: 1,
           maxPeople: 1,
@@ -799,18 +749,8 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         ]);
       }
     } catch (error) {
-      console.error("Error creating trip:", error);
-      setNotifications((prev) => [
-        {
-          id: Date.now(),
-          type: "error",
-          title: "Failed to create trip",
-          message: error.response?.data?.error || error.message || "Please try again",
-          date: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
+      console.error('Error posting trip:', error);
+      alert(`❌ Failed to post trip: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -1743,6 +1683,16 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 >
                   <GiTrophy size={28} />
                 </button>
+                
+                {/* Post Trip Button */}
+                <button
+                  onClick={() => setShowPostTrip(true)}
+                  className="bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white px-4 py-1.5 rounded-full transition-colors font-cinzel shadow-md flex items-center text-sm"
+                >
+                  <FiPlus className="mr-1" />
+                  Post Trip
+                </button>
+                
                 <NotificationSystem
                   notifications={notifications}
                   showNotifications={showNotifications}
@@ -1777,34 +1727,61 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             </div>
 
             {/* Mobile menu */}
-            {mobileMenuOpen && (
-              <div className="md:hidden bg-[#1a3a2a] py-4 px-2 rounded-b-lg">
-                <nav className="flex flex-col space-y-3">
-                  <a
-                    href="#trips"
-                    className="text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4"
+            <div className={`md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="bg-[#2c5e4a] h-full w-64 p-6 shadow-lg">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-xl font-bold text-[#f8d56b]">Menu</h2>
+                  <button
                     onClick={() => setMobileMenuOpen(false)}
+                    className="text-white hover:text-[#f8d56b]"
                   >
-                    Trips
-                  </a>
-                  <a
-                    href="#completed"
-                    className="text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4"
-                    onClick={() => setMobileMenuOpen(false)}
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={handleShowProfile}
+                    className="flex items-center space-x-2 text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4 text-left w-full"
                   >
-                    Completed
-                  </a>
-                  <a
-                    href="#destinations"
-                    className="text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4"
-                    onClick={() => setMobileMenuOpen(false)}
+                    <img
+                      src={currentUser.avatar}
+                      alt="Profile"
+                      className="w-6 h-6 rounded-full border border-white"
+                    />
+                    <span>Profile</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPostTrip(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4 text-left w-full"
                   >
-                    Destinations
-                  </a>
-                  <hr className="border-[#2c5e4a]" />
-                </nav>
+                    <FiPlus className="mr-1" />
+                    <span>Post Trip</span>
+                  </button>
+                  <button
+                    onClick={handleToggleNotifications}
+                    className="flex items-center space-x-2 text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4 text-left w-full"
+                  >
+                    <FiBell className="mr-1" />
+                    <span>Notifications</span>
+                    {notifications.filter(n => !n.read).length > 0 && (
+                      <span className="bg-[#f87c6d] text-white text-xs rounded-full px-2 py-0.5 ml-1">
+                        {notifications.filter(n => !n.read).length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center space-x-2 text-[#a8c4b8] hover:text-[#f8d56b] transition-colors font-cinzel py-2 px-4 text-left w-full"
+                  >
+                    <FiLogOut className="mr-1" />
+                    <span>Logout</span>
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </header>
 
@@ -2127,6 +2104,14 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                   Try adjusting your search terms or check back later for new
                   trips.
                 </p>
+                {/* Add a button to create a new trip */}
+                <button
+                  onClick={() => setShowPostTrip(true)}
+                  className="mt-4 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white px-4 py-2 rounded-full transition-colors font-cinzel"
+                >
+                  <FiPlus className="inline mr-1" />
+                  Post a Trip
+                </button>
               </div>
             )}
 
@@ -3384,10 +3369,8 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
               <div className="bg-gradient-to-br from-[#f8f4e3] to-[#f0d9b5] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 {/* Modal Header with Close Button */}
                 <div className="sticky top-0 bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] z-10 flex justify-between items-center p-4 border-b border-[#5E5854]">
-                  <h3 className="text-xl sm:text-2xl font-bold text-white">
-                    Post a New Trip
-                  </h3>
-                  <button
+                  <h3 className="text-xl sm:text-2xl font-bold text-white">Post a New Trip</h3>
+                  <button 
                     onClick={() => setShowPostTrip(false)}
                     className="text-white hover:text-[#f8d56b] p-2 rounded-full"
                   >
@@ -3407,7 +3390,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                         name="destination"
                         value={newTrip.destination}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                         placeholder="e.g. Bali, Indonesia"
                         required
                       />
@@ -3421,100 +3404,39 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                         name="departure"
                         value={newTrip.departure}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                         placeholder="e.g. New York, USA"
                         required
                       />
                     </div>
                   </div>
 
-                  {/* Google Account Name Field */}
-                  <div className="mb-4">
-                    <label className="block text-[#5E5854] font-medium mb-2">
-                      Google Account Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="googleAccountName"
-                      value={newTrip.googleAccountName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
-                      placeholder="Enter your Google account name"
-                      required
-                    />
-                    <p className="text-sm text-gray-600 mt-1">
-                      This should match the name on your Google account for verification purposes.
-                    </p>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-[#5E5854] font-medium mb-2">
-                        📅 Trip Start Date<span className="text-red-500">*</span>
+                        From<span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
-                        <input
-                          type="date"
-                          name="fromDate"
-                          value={newTrip.fromDate}
-                          onChange={handleInputChange}
-                          min={getTomorrowDate()} // Prevent selecting today or past dates
-                          className="w-full px-4 py-3 border-2 border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] text-base font-medium cursor-pointer transition-all duration-200"
-                          style={{
-                            colorScheme: 'light',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'textfield'
-                          }}
-                          required
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                          <svg className="w-5 h-5 text-[#f8a95d]" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1">
-                        ⚠️ Must be tomorrow ({new Date(getTomorrowDate()).toLocaleDateString()}) or later
-                      </p>
+                      <input
+                        type="date"
+                        name="fromDate"
+                        value={newTrip.fromDate}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
+                        required
+                      />
                     </div>
                     <div>
                       <label className="block text-[#5E5854] font-medium mb-2">
-                        📅 Trip End Date<span className="text-red-500">*</span>
+                        To<span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
-                        <input
-                          type="date"
-                          name="toDate"
-                          value={newTrip.toDate}
-                          onChange={handleInputChange}
-                          min={newTrip.fromDate ? (() => {
-                            const minDate = new Date(newTrip.fromDate);
-                            minDate.setDate(minDate.getDate() + 1);
-                            return minDate.toISOString().split('T')[0];
-                          })() : getTomorrowDate()}
-                          disabled={!newTrip.fromDate}
-                          className={`w-full px-4 py-3 border-2 border-[#d1c7b7] rounded-lg focus:ring-2 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] text-base font-medium cursor-pointer transition-all duration-200 ${
-                            !newTrip.fromDate ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                          style={{
-                            colorScheme: 'light',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'textfield'
-                          }}
-                          required
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                          <svg className={`w-5 h-5 ${!newTrip.fromDate ? 'text-gray-400' : 'text-[#f8a95d]'}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {!newTrip.fromDate
-                          ? '⚠️ Select start date first'
-                          : `⚠️ Must be after ${new Date(newTrip.fromDate).toLocaleDateString()}`
-                        }
-                      </p>
+                      <input
+                        type="date"
+                        name="toDate"
+                        value={newTrip.toDate}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
+                        required
+                      />
                     </div>
                   </div>
 
@@ -3527,7 +3449,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                         name="transport"
                         value={newTrip.transport}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                         required
                       >
                         <option value="">Select transport</option>
@@ -3548,7 +3470,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                           name="currency"
                           value={newTrip.currency}
                           onChange={handleInputChange}
-                          className="w-24 px-2 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                          className="w-24 px-2 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                           required
                         >
                           <option value="USD">USD</option>
@@ -3566,7 +3488,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                           name="budget"
                           value={newTrip.budget}
                           onChange={handleInputChange}
-                          className="flex-1 px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                          className="flex-1 px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                           placeholder="Enter amount"
                           required
                         />
@@ -3589,7 +3511,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                             : newTrip.numberOfPeople
                         }
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                         placeholder="e.g. 2"
                         min="1"
                         required
@@ -3603,8 +3525,8 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                         type="number"
                         name="maxPeople"
                         value={newTrip.maxPeople === 0 ? "" : newTrip.maxPeople}
-                                                                      onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                         placeholder="e.g. 6"
                         min="1"
                         required
@@ -3685,7 +3607,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                       name="category"
                       value={newTrip.category}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500"
+                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854]"
                       required
                     >
                       <option value="">Select category</option>
@@ -3706,7 +3628,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                       name="description"
                       value={newTrip.description}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] bg-white text-[#2c2c2c] placeholder-gray-500 min-h-[100px]"
+                      className="w-full px-4 py-2 border border-[#d1c7b7] rounded-lg focus:ring-1 focus:ring-[#f8a95d] focus:border-[#f8a95d] focus:outline-none hover:border-[#f8a95d] text-[#5E5854] min-h-[100px]"
                       placeholder="Describe your trip..."
                     ></textarea>
                   </div>
@@ -3778,6 +3700,23 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
               </div>
             </div>
           )}
+
+          {/* Success Modal */}
+          {showSuccessModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+              <div className="bg-white rounded-xl p-8 shadow-lg flex flex-col items-center">
+                <h2 className="text-2xl font-bold text-[#2c5e4a] mb-4">Trip Posted!</h2>
+                <p className="text-[#5E5854] mb-6">Your trip has been successfully posted.</p>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] text-white px-6 py-2 rounded-full font-cinzel"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Group Chat Modal */}
           {showGroupChat && selectedTrip && (
             <GroupChat
