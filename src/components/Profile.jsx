@@ -325,6 +325,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
   };
 
   const handleViewTripMemories = (type) => {
+    console.log(`Viewing ${type} trips for user:`, currentUser);
     setSelectedTripType(type);
     setShowTripMemories(true);
   };
@@ -1140,6 +1141,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
           <TripMemories
             tripType={selectedTripType}
             onClose={() => setShowTripMemories(false)}
+            currentUser={currentUser}
           />
         )}
 

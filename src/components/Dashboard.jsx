@@ -3298,11 +3298,11 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4 sm:p-6">
                         <div className="flex items-center mb-2">
                           <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                            ✅ Completed
+                             Completed
                           </span>
                           {trip.autoCompleted && (
                             <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold ml-2">
-                              🤖 Auto
+                               Auto
                             </span>
                           )}
                         </div>
