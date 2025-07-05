@@ -9,7 +9,7 @@ const JoinedTrip = require('../models/JoinedTrip');
 router.get('/users', authenticateAdmin, async (req, res) => {
   try {
     const users = await User.find({})
-      .select('fullName email phone createdAt coins tripsHosted tripsJoined totalTrips level avatar googleAccountName')
+      .select('fullName email phone createdAt coins tripsHosted tripsJoined totalTrips level avatar googleAccountName gender')
       .sort({ createdAt: -1 });
 
     const transformedUsers = users.map(user => ({
@@ -25,7 +25,8 @@ router.get('/users', authenticateAdmin, async (req, res) => {
       level: user.level || 'Explorer',
       status: 'Active',
       avatar: user.avatar,
-      googleAccountName: user.googleAccountName
+      googleAccountName: user.googleAccountName,
+      gender: user.gender || 'Not specified'
     }));
 
     res.status(200).json({

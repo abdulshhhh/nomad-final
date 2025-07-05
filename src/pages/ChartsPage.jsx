@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiBarChart2, FiHome, FiPieChart, FiUsers, FiMap } from 'react-icons/fi';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -12,6 +12,7 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
+import axios from 'axios';
 
 // Register ChartJS components
 ChartJS.register(
@@ -31,120 +32,26 @@ export default function ChartsPage() {
   const [tripData, setTripData] = useState(null);
   const [userData, setUserData] = useState(null);
   const [activeTab, setActiveTab] = useState('trips');
+  
+  // Add state for original API responses
+  const [tripsResponse, setTripsResponse] = useState(null);
+  const [usersResponse, setUsersResponse] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Mock data for demonstration
-        // In a real app, you would fetch this from your API
-        
-        // Trip data
-        const mockTripData = {
-          categories: {
-            labels: ['Beach', 'Mountain', 'City', 'Adventure', 'Cultural'],
-            data: [12, 8, 15, 6, 9],
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.7)',
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 206, 86, 0.7)',
-              'rgba(75, 192, 192, 0.7)',
-              'rgba(153, 102, 255, 0.7)',
-            ],
-          },
-          monthlyTrips: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [5, 7, 10, 8, 12, 15, 20, 18, 14, 9, 6, 8],
-          },
-          status: {
-            labels: ['Active', 'Completed', 'Cancelled'],
-            data: [25, 35, 5],
-            backgroundColor: [
-              'rgba(75, 192, 192, 0.7)',
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 99, 132, 0.7)',
-            ],
-          },
-          destinations: {
-            labels: ['Asia', 'Europe', 'North America', 'South America', 'Africa', 'Australia'],
-            data: [18, 22, 15, 8, 5, 7],
-          }
-        };
-        
-        // User data
-        const mockUserData = {
-          joinedByMonth: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            data: [8, 12, 15, 10, 7, 9, 14, 18, 20, 15, 10, 12],
-          },
-          ageGroups: {
-            labels: ['18-24', '25-34', '35-44', '45-54', '55+'],
-            data: [15, 35, 25, 15, 10],
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.7)',
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 206, 86, 0.7)',
-              'rgba(75, 192, 192, 0.7)',
-              'rgba(153, 102, 255, 0.7)',
-            ],
-          },
-          genderDistribution: {
-            labels: ['Male', 'Female', 'Prefer not to say'],
-            data: [45, 40, 15],
-            backgroundColor: [
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 99, 132, 0.7)',
-              'rgba(153, 102, 255, 0.7)',
-            ],
-          },
-          tripParticipation: {
-            labels: ['No trips', '1-2 trips', '3-5 trips', '6+ trips'],
-            data: [30, 40, 20, 10],
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.7)',
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 206, 86, 0.7)',
-              'rgba(75, 192, 192, 0.7)',
-            ],
-          },
-          userTypes: {
-            labels: ['Organizers', 'Participants', 'Both'],
-            data: [20, 60, 20],
-            backgroundColor: [
-              'rgba(255, 206, 86, 0.7)',
-              'rgba(75, 192, 192, 0.7)',
-              'rgba(153, 102, 255, 0.7)',
-            ],
-          }
-        };
-        
-        setTripData(mockTripData);
-        setUserData(mockUserData);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching chart data:", err);
-        setError("Failed to load chart data. Please try again later.");
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
+  // Add state for filters
+  const [filters, setFilters] = useState({
+    gender: 'all',
+    joinDateStart: '',
+    joinDateEnd: '',
+    tripType: 'all'
+  });
 
-  // Chart options
+  // Define chart options outside of render to avoid re-creation
   const barOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
       },
     },
   };
@@ -158,6 +65,492 @@ export default function ChartsPage() {
       },
     },
   };
+
+  // Process trips data - make it more resilient to data issues
+  const processTripsData = useCallback((trips) => {
+    if (!trips || !Array.isArray(trips) || trips.length === 0) {
+      // Return default data if trips is empty or invalid
+      return {
+        categories: {
+          labels: ['No Data'],
+          data: [1],
+          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
+        },
+        monthlyTrips: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          data: Array(12).fill(0),
+        },
+        status: {
+          labels: ['No Data'],
+          data: [1],
+          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
+        },
+        destinations: {
+          labels: ['No Data'],
+          data: [1],
+        },
+      };
+    }
+
+    try {
+      // Extract unique categories from trips
+      const uniqueCategories = [...new Set(trips.map(trip => trip.category || 'Uncategorized'))];
+      
+      const categories = {
+        labels: uniqueCategories.length ? uniqueCategories : ['No Data'],
+        data: uniqueCategories.length ? 
+          uniqueCategories.map(category => 
+            trips.filter(trip => (trip.category || 'Uncategorized') === category).length
+          ) : [1],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+          'rgba(255, 159, 64, 0.7)',
+          'rgba(201, 203, 207, 0.7)',
+        ],
+      };
+
+      const monthlyTrips = {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        data: Array(12).fill(0),
+      };
+
+      // Extract unique statuses from trips
+      const uniqueStatuses = [...new Set(trips.map(trip => trip.status || 'Upcoming'))];
+      
+      const status = {
+        labels: uniqueStatuses.length ? uniqueStatuses : ['No Data'],
+        data: uniqueStatuses.length ? 
+          uniqueStatuses.map(status => 
+            trips.filter(trip => (trip.status || 'Upcoming') === status).length
+          ) : [1],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+        ],
+      };
+
+      // Get top destinations
+      const destinationCounts = {};
+      trips.forEach(trip => {
+        const destination = trip.destination || trip.departure || 'Unknown';
+        destinationCounts[destination] = (destinationCounts[destination] || 0) + 1;
+      });
+      
+      // Sort destinations by count and take top 6
+      const topDestinations = Object.entries(destinationCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+      
+      const destinations = {
+        labels: topDestinations.length ? topDestinations.map(item => item[0]) : ['No Data'],
+        data: topDestinations.length ? topDestinations.map(item => item[1]) : [1],
+      };
+
+      // Process monthly data
+      trips.forEach(trip => {
+        // Use createdAt for the month data
+        const date = new Date(trip.createdAt);
+        if (!isNaN(date.getTime())) {
+          const monthIndex = date.getMonth();
+          monthlyTrips.data[monthIndex]++;
+        }
+      });
+
+      return {
+        categories,
+        monthlyTrips,
+        status,
+        destinations,
+      };
+    } catch (err) {
+      console.error("Error processing trip data:", err);
+      // Return default data on error
+      return {
+        categories: {
+          labels: ['Error'],
+          data: [1],
+          backgroundColor: ['rgba(255, 99, 132, 0.7)'],
+        },
+        monthlyTrips: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          data: Array(12).fill(0),
+        },
+        status: {
+          labels: ['Error'],
+          data: [1],
+          backgroundColor: ['rgba(255, 99, 132, 0.7)'],
+        },
+        destinations: {
+          labels: ['Error'],
+          data: [1],
+        },
+      };
+    }
+  }, []);
+
+  // Process users data - make it more resilient to data issues
+  const processUsersData = useCallback((users) => {
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      // Return default data if users is empty or invalid
+      return {
+        joinedByMonth: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          data: Array(12).fill(0),
+        },
+        ageGroups: {
+          labels: ['No Data'],
+          data: [1],
+          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
+        },
+        tripParticipation: {
+          labels: ['No Data'],
+          data: [1],
+        },
+        userTypes: {
+          labels: ['No Data'],
+          data: [1],
+          backgroundColor: ['rgba(201, 203, 207, 0.7)'],
+        },
+      };
+    }
+
+    try {
+      const joinedByMonth = {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        data: Array(12).fill(0),
+      };
+
+      // Gender distribution
+      const genderCounts = {
+        'Male': 0,
+        'Female': 0,
+        'Other': 0,
+        'Not specified': 0
+      };
+      
+      users.forEach(user => {
+        const gender = user.gender || 'Not specified';
+        genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+      });
+      
+      const ageGroups = {
+        labels: Object.keys(genderCounts),
+        data: Object.values(genderCounts),
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+          'rgba(201, 203, 207, 0.7)',
+        ],
+      };
+
+      // Trip participation
+      const tripParticipation = {
+        labels: ['No trips', '1-2 trips', '3-5 trips', '6+ trips'],
+        data: [0, 0, 0, 0],
+      };
+
+      // User types
+      const userTypes = {
+        labels: ['Organizers', 'Participants', 'Both'],
+        data: [0, 0, 0],
+        backgroundColor: [
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+        ],
+      };
+
+      users.forEach(user => {
+        // Process joinedByMonth using createdAt
+        const joinDate = new Date(user.joinDate || user.createdAt);
+        if (!isNaN(joinDate.getTime())) {
+          const monthIndex = joinDate.getMonth();
+          joinedByMonth.data[monthIndex]++;
+        }
+
+        // Process trip participation
+        const tripsHosted = user.tripsHosted || 0;
+        const tripsJoined = user.tripsJoined || 0;
+        const totalTrips = tripsHosted + tripsJoined;
+        
+        if (totalTrips === 0) {
+          tripParticipation.data[0]++;
+        } else if (totalTrips <= 2) {
+          tripParticipation.data[1]++;
+        } else if (totalTrips <= 5) {
+          tripParticipation.data[2]++;
+        } else {
+          tripParticipation.data[3]++;
+        }
+
+        // Process user types
+        if (tripsHosted > 0 && tripsJoined > 0) {
+          userTypes.data[2]++; // Both
+        } else if (tripsHosted > 0) {
+          userTypes.data[0]++; // Organizers
+        } else if (tripsJoined > 0) {
+          userTypes.data[1]++; // Participants
+        } else {
+          userTypes.data[1]++; // Default to participants for new users
+        }
+      });
+
+      return {
+        joinedByMonth,
+        ageGroups, // This is actually gender distribution now
+        tripParticipation,
+        userTypes,
+      };
+    } catch (err) {
+      console.error("Error processing user data:", err);
+      // Return default data on error
+      return {
+        joinedByMonth: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          data: Array(12).fill(0),
+        },
+        ageGroups: {
+          labels: ['Error'],
+          data: [1],
+          backgroundColor: ['rgba(255, 99, 132, 0.7)'],
+        },
+        tripParticipation: {
+          labels: ['Error'],
+          data: [1],
+        },
+        userTypes: {
+          labels: ['Error'],
+          data: [1],
+          backgroundColor: ['rgba(255, 99, 132, 0.7)'],
+        },
+      };
+    }
+  }, []);
+
+  // Add filter handlers
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Add filter UI above the charts
+  const renderFilters = () => (
+    <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4 mb-6">
+      <h3 className="text-lg font-bold text-[#2c5e4a] mb-4">Filter Data</h3>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {activeTab === 'users' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <select
+                name="gender"
+                value={filters.gender}
+                onChange={handleFilterChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="all">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Join Date (From)</label>
+              <input
+                type="date"
+                name="joinDateStart"
+                value={filters.joinDateStart}
+                onChange={handleFilterChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Join Date (To)</label>
+              <input
+                type="date"
+                name="joinDateEnd"
+                value={filters.joinDateEnd}
+                onChange={handleFilterChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
+          </>
+        )}
+        {activeTab === 'trips' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Trip Type</label>
+              <select
+                name="tripType"
+                value={filters.tripType}
+                onChange={handleFilterChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="all">All Types</option>
+                <option value="Upcoming">Upcoming</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </>
+        )}
+        <div className="flex items-end">
+          <button
+            onClick={() => {
+              // Reset filters
+              setFilters({
+                gender: 'all',
+                joinDateStart: '',
+                joinDateEnd: '',
+                tripType: 'all'
+              });
+            }}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded"
+          >
+            Reset Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          setError("Authentication required");
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Fetching data...");
+        
+        // Fetch stats from backend
+        const statsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/stats`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        console.log("Stats response:", statsResponse.data);
+        
+        // Fetch trips data
+        const tripsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/trips`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        console.log("Trips response:", tripsResponse.data);
+        
+        // Fetch users data
+        const usersResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/admin/users`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        console.log("Users response:", usersResponse.data);
+        
+        if (statsResponse.data.success && tripsResponse.data.success && usersResponse.data.success) {
+          // Store original responses
+          setTripsResponse(tripsResponse.data);
+          setUsersResponse(usersResponse.data);
+          
+          // Process trip data
+          const trips = tripsResponse.data.trips;
+          const users = usersResponse.data.users;
+          
+          console.log("Processing trip data...");
+          const tripData = processTripsData(trips);
+          
+          console.log("Processing user data...");
+          const userData = processUsersData(users);
+          
+          setTripData(tripData);
+          setUserData(userData);
+        } else {
+          setError("Failed to load data from server");
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching chart data:", err);
+        setError("Failed to load chart data. Please try again later.");
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [processTripsData, processUsersData]);
+
+  // Apply filters when they change
+  useEffect(() => {
+    if (!tripsResponse || !usersResponse) return;
+    
+    try {
+      console.log("Applying filters...");
+      
+      // Apply filters based on activeTab
+      if (activeTab === 'trips') {
+        // Filter trips by type if not "all"
+        if (filters.tripType !== 'all') {
+          // Create filtered trip data
+          const filteredTrips = tripsResponse.trips.filter(
+            trip => trip.status === filters.tripType
+          );
+          setTripData(processTripsData(filteredTrips));
+        } else {
+          // Reset to all trips
+          setTripData(processTripsData(tripsResponse.trips));
+        }
+      } else if (activeTab === 'users') {
+        // Filter users
+        let filteredUsers = usersResponse.users;
+        
+        // Filter by gender
+        if (filters.gender !== 'all') {
+          filteredUsers = filteredUsers.filter(user => user.gender === filters.gender);
+        }
+        
+        // Filter by join date range
+        if (filters.joinDateStart) {
+          const startDate = new Date(filters.joinDateStart);
+          filteredUsers = filteredUsers.filter(user => {
+            const joinDate = new Date(user.joinDate || user.createdAt);
+            return joinDate >= startDate;
+          });
+        }
+        
+        if (filters.joinDateEnd) {
+          const endDate = new Date(filters.joinDateEnd);
+          endDate.setHours(23, 59, 59); // End of day
+          filteredUsers = filteredUsers.filter(user => {
+            const joinDate = new Date(user.joinDate || user.createdAt);
+            return joinDate <= endDate;
+          });
+        }
+        
+        setUserData(processUsersData(filteredUsers));
+      }
+    } catch (err) {
+      console.error("Error applying filters:", err);
+    }
+  }, [activeTab, filters, tripsResponse, usersResponse, processTripsData, processUsersData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8f4e3] to-[#f0d9b5]">
@@ -183,31 +576,34 @@ export default function ChartsPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4 mb-6">
-          <div className="flex flex-wrap gap-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-[#2c5e4a]">Analytics Dashboard</h1>
+          <div className="flex space-x-4">
             <button
               onClick={() => setActiveTab('trips')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition ${
+              className={`px-4 py-2 rounded-lg ${
                 activeTab === 'trips'
                   ? 'bg-[#2c5e4a] text-white'
-                  : 'bg-[#f8f4e3] text-[#2c5e4a] hover:bg-[#e1d9c8]'
+                  : 'bg-white text-[#2c5e4a] border border-[#2c5e4a]'
               }`}
             >
-              <FiMap /> Trip Analytics
+              Trip Analytics
             </button>
             <button
               onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition ${
+              className={`px-4 py-2 rounded-lg ${
                 activeTab === 'users'
                   ? 'bg-[#2c5e4a] text-white'
-                  : 'bg-[#f8f4e3] text-[#2c5e4a] hover:bg-[#e1d9c8]'
+                  : 'bg-white text-[#2c5e4a] border border-[#2c5e4a]'
               }`}
             >
-              <FiUsers /> User Analytics
+              User Analytics
             </button>
           </div>
         </div>
+
+        {/* Add filters section */}
+        {renderFilters()}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -354,11 +750,11 @@ export default function ChartsPage() {
                     </div>
                   </div>
 
-                  {/* Pie Chart - Age Groups */}
+                  {/* Pie Chart - Gender Distribution */}
                   <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4">
                     <div className="flex items-center mb-4">
                       <FiPieChart className="text-[#2c5e4a] text-xl mr-2" />
-                      <h2 className="text-lg font-bold text-[#2c5e4a]">User Age Distribution</h2>
+                      <h2 className="text-lg font-bold text-[#2c5e4a]">Gender Distribution</h2>
                     </div>
                     <div className="h-80">
                       <Pie
@@ -434,5 +830,175 @@ export default function ChartsPage() {
       </main>
     </div>
   );
+}
+
+// Process trips data
+function processTripsData(trips) {
+  // Extract unique categories from trips
+  const uniqueCategories = [...new Set(trips.map(trip => trip.category || 'Uncategorized'))];
+  
+  const categories = {
+    labels: uniqueCategories,
+    data: uniqueCategories.map(category => 
+      trips.filter(trip => (trip.category || 'Uncategorized') === category).length
+    ),
+    backgroundColor: [
+      'rgba(255, 99, 132, 0.7)',
+      'rgba(54, 162, 235, 0.7)',
+      'rgba(255, 206, 86, 0.7)',
+      'rgba(75, 192, 192, 0.7)',
+      'rgba(153, 102, 255, 0.7)',
+      'rgba(255, 159, 64, 0.7)',
+      'rgba(201, 203, 207, 0.7)',
+    ],
+  };
+
+  const monthlyTrips = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    data: Array(12).fill(0),
+  };
+
+  // Extract unique statuses from trips
+  const uniqueStatuses = [...new Set(trips.map(trip => trip.status || 'Upcoming'))];
+  
+  const status = {
+    labels: uniqueStatuses,
+    data: uniqueStatuses.map(status => 
+      trips.filter(trip => (trip.status || 'Upcoming') === status).length
+    ),
+    backgroundColor: [
+      'rgba(75, 192, 192, 0.7)',
+      'rgba(54, 162, 235, 0.7)',
+      'rgba(255, 99, 132, 0.7)',
+      'rgba(255, 206, 86, 0.7)',
+      'rgba(153, 102, 255, 0.7)',
+    ],
+  };
+
+  // Get top destinations
+  const destinationCounts = {};
+  trips.forEach(trip => {
+    const destination = trip.destination || trip.departure || 'Unknown';
+    destinationCounts[destination] = (destinationCounts[destination] || 0) + 1;
+  });
+  
+  // Sort destinations by count and take top 6
+  const topDestinations = Object.entries(destinationCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  
+  const destinations = {
+    labels: topDestinations.map(item => item[0]),
+    data: topDestinations.map(item => item[1]),
+  };
+
+  // Process monthly data
+  trips.forEach(trip => {
+    // Use createdAt for the month data
+    const date = new Date(trip.createdAt);
+    if (!isNaN(date.getTime())) {
+      const monthIndex = date.getMonth();
+      monthlyTrips.data[monthIndex]++;
+    }
+  });
+
+  return {
+    categories,
+    monthlyTrips,
+    status,
+    destinations,
+  };
+}
+
+// Process users data
+function processUsersData(users) {
+  const joinedByMonth = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    data: Array(12).fill(0),
+  };
+
+  // Since we might not have age data, let's use a different chart
+  // Let's use gender distribution instead
+  const genderCounts = {
+    'Male': 0,
+    'Female': 0,
+    'Other': 0,
+    'Not specified': 0
+  };
+  
+  users.forEach(user => {
+    const gender = user.gender || 'Not specified';
+    genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+  });
+  
+  const ageGroups = {
+    labels: Object.keys(genderCounts),
+    data: Object.values(genderCounts),
+    backgroundColor: [
+      'rgba(54, 162, 235, 0.7)',
+      'rgba(255, 99, 132, 0.7)',
+      'rgba(153, 102, 255, 0.7)',
+      'rgba(201, 203, 207, 0.7)',
+    ],
+  };
+
+  // Trip participation
+  const tripParticipation = {
+    labels: ['No trips', '1-2 trips', '3-5 trips', '6+ trips'],
+    data: [0, 0, 0, 0],
+  };
+
+  // User types
+  const userTypes = {
+    labels: ['Organizers', 'Participants', 'Both'],
+    data: [0, 0, 0],
+    backgroundColor: [
+      'rgba(255, 206, 86, 0.7)',
+      'rgba(75, 192, 192, 0.7)',
+      'rgba(153, 102, 255, 0.7)',
+    ],
+  };
+
+  users.forEach(user => {
+    // Process joinedByMonth using createdAt
+    const joinDate = new Date(user.joinDate || user.createdAt);
+    if (!isNaN(joinDate.getTime())) {
+      const monthIndex = joinDate.getMonth();
+      joinedByMonth.data[monthIndex]++;
+    }
+
+    // Process trip participation
+    const tripsHosted = user.tripsHosted || 0;
+    const tripsJoined = user.tripsJoined || 0;
+    const totalTrips = tripsHosted + tripsJoined;
+    
+    if (totalTrips === 0) {
+      tripParticipation.data[0]++;
+    } else if (totalTrips <= 2) {
+      tripParticipation.data[1]++;
+    } else if (totalTrips <= 5) {
+      tripParticipation.data[2]++;
+    } else {
+      tripParticipation.data[3]++;
+    }
+
+    // Process user types
+    if (tripsHosted > 0 && tripsJoined > 0) {
+      userTypes.data[2]++; // Both
+    } else if (tripsHosted > 0) {
+      userTypes.data[0]++; // Organizers
+    } else if (tripsJoined > 0) {
+      userTypes.data[1]++; // Participants
+    } else {
+      userTypes.data[1]++; // Default to participants for new users
+    }
+  });
+
+  return {
+    joinedByMonth,
+    ageGroups, // This is actually gender distribution now
+    tripParticipation,
+    userTypes,
+  };
 }
 
