@@ -691,7 +691,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-[#204231] cursor-pointer hover:border-[#204231] transition-colors"
                       >
                         <h3 className="text-base sm:text-lg font-cinzel font-semibold text-[#204231] mb-2">Trips Posted</h3>
-                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2">{profileData.tripsPosted}</p>
+                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2">{profileData.tripsPosted || 0}</p>
                         <p className="text-[#204231] text-xs sm:text-sm">Click to view details and memories</p>
                       </div>
 
@@ -700,7 +700,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-[#204231] cursor-pointer hover:border-[#204231] transition-colors"
                       >
                         <h3 className="text-base sm:text-lg font-cinzel font-semibold text-[#204231] mb-2">Trips Joined</h3>
-                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2">{profileData.tripsJoined}</p>
+                        <p className="text-xl sm:text-2xl font-cinzel font-bold text-yellow-500 mb-2">{profileData.tripsJoined || 0}</p>
                         <p className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">Click to view details and memories</p>
                       </div>
                     </div>
