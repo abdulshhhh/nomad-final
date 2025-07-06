@@ -558,21 +558,15 @@ export default function ChartsPage() {
               const userId = user._id || user.id;
               try {
                 const profileResponse = await axios.get(
-                  `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/leaderboard/profile/${userId}`,
+                  `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/profile/${userId}`,
                   { headers: { "Authorization": `Bearer ${token}` } }
                 );
                 
                 if (profileResponse.data.success) {
                   console.log(`Successfully fetched profile for user ${userId}`);
-                  // Ensure gender is properly extracted
-                  const profile = profileResponse.data.profile;
-                  
-                  // Debug the profile data
-                  console.log(`Profile gender for ${userId}: ${profile.gender}`);
-                  
-                  return profile;
+                  return profileResponse.data.profile;
                 } else {
-                  console.log(`Failed to fetch profile for user ${userId}: ${profileResponse.data.error || 'Unknown error'}`);
+                  console.log(`Failed to fetch profile for user ${userId}`);
                   return null;
                 }
               } catch (err) {
