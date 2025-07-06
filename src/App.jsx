@@ -19,6 +19,7 @@ const OAuthSuccess = lazy(() => import('./components/OAuthSuccess'));
 const OAuthError = lazy(() => import('./components/OAuthError'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
+const AboutUs = lazy(() => import('./components/AboutUs'));
 
 
 const STORAGE_KEYS = {
@@ -142,6 +143,8 @@ const App = () => {
           <Route path="/signup" element={<SignUpWrapper handleAuthSuccess={handleAuthSuccess} />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
           <Route path="/oauth-error" element={<OAuthError />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route path="/about-us" element={<AboutUs />} />
           <Route
             path="/dashboard"
             element={
@@ -161,7 +164,6 @@ const App = () => {
           />
           <Route path="/all-trips" element={<AllTrips currentUser={currentUser} />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
           {/* 🔐 ADMIN DASHBOARD ROUTE */}
           <Route
             path="/admin/*"

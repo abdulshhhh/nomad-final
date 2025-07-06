@@ -4197,6 +4197,35 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
               </ul>
             </div>
             <div>
+              <h5 className="font-bold mb-4">Company</h5>
+              <ul className="space-y-2 text-[#a8c4b8]">
+                <li>
+                  <a
+                    href="/about-us"
+                    className="hover:text-[#f8d56b] transition-colors"
+                  >
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/terms-and-conditions"
+                    className="hover:text-[#f8d56b] transition-colors"
+                  >
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/privacy-policy"
+                    className="hover:text-[#f8d56b] transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
               <h5 className="font-bold mb-4">Contact</h5>
               <ul className="space-y-2 text-[#a8c4b8]">
                 <li>
@@ -4218,20 +4247,6 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                   </a>
                 </li>
               </ul>
-            </div>
-            <div>
-              <h5 className="font-bold mb-4">Follow Us</h5>
-              <div className="flex space-x-4">
-                <a href="#" className="hover:text-[#f8d56b] transition-colors">
-                  Instagram
-                </a>
-                <a href="#" className="hover:text-[#f8d56b] transition-colors">
-                  Twitter
-                </a>
-                <a href="#" className="hover:text-[#f8d56b] transition-colors">
-                  Facebook
-                </a>
-              </div>
             </div>
           </div>
           <div className="mt-8 text-center text-[#a8c4b8] text-sm">
