@@ -201,6 +201,16 @@ router.post('/update-trip-stats', async (req, res) => {
                 coinChange += 3;
                 message += ` +3 bonus coins for new country (${country})!`;
             }
+        } else if (action === 'leave') {
+            // Handle leaving a trip - deduct stats and coins
+            user.tripsJoined = Math.max(0, user.tripsJoined - 1);
+            user.totalTrips = Math.max(0, user.totalTrips - 1);
+            user.coins = Math.max(0, user.coins - 5);
+            user.experience = Math.max(0, user.experience - 5);
+            coinChange = -5;
+            message = tripDestination
+                ? `Lost 5 coins for leaving trip to ${tripDestination}`
+                : 'Lost 5 coins for leaving a trip';
         } else if (action === 'abandon' || action === 'abandon_participant') {
             // For abandonment, we don't remove countries from the list
             // as the user has still "experienced" that country
@@ -264,7 +274,7 @@ router.post('/update-trip-stats', async (req, res) => {
             },
             message: `Updated stats for ${action}ing trip`,
             countryAdded: countryAdded ? country : null,
-            penalty: action.includes('abandon') ? -5 : (action === 'host' || action === 'join' ? 5 : 0)
+            penalty: action.includes('abandon') || action === 'leave' ? -5 : (action === 'host' || action === 'join' ? 5 : 0)
         });
     } catch (error) {
         console.error('Error updating trip stats:', error);

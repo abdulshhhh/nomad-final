@@ -1,10 +1,10 @@
-# 🔐 Admin Authentication System - Complete Guide
+~# 🔐 Admin Authentication System - Complete Guide
 
 ## Overview
 A robust admin authentication system has been implemented that allows access to the AdminDashboard.jsx component using specific admin credentials.
 
 ## Admin Credentials
-- **Username**: `admin123`
+- **Email**: `admin123@nomadnova.com`
 - **Password**: `nomadnova`
 - **Access Route**: `/admin`
 
@@ -37,7 +37,7 @@ A robust admin authentication system has been implemented that allows access to 
 Navigate to: `http://localhost:5173/login`
 
 ### Step 2: Enter Admin Credentials
-- **Email/Username**: `admin123`
+- **Email**: `admin123@nomadnova.com`
 - **Password**: `nomadnova`
 - Check "I agree to the terms and conditions"
 - Click "Sign In"
@@ -74,7 +74,7 @@ Navigate to: `http://localhost:5173/login`
 ### Admin Login
 ```
 POST /api/auth/login
-Body: { "email": "admin123", "password": "nomadnova" }
+Body: { "email": "admin123@nomadnova.com", "password": "nomadnova" }
 Response: { "isAdmin": true, "token": "...", "user": {...} }
 ```
 
@@ -104,7 +104,7 @@ Response: { "isAdmin": true, "token": "...", "user": {...} }
 
 ## Usage Instructions
 
-1. **For Admin Access**: Use credentials `admin123` / `nomadnova`
+1. **For Admin Access**: Use credentials `admin123@nomadnova.com` / `nomadnova`
 2. **For Regular Users**: Use any registered user credentials
 3. **Admin Dashboard**: Accessible only at `/admin` with admin credentials
 4. **Logout**: Properly clears all authentication and admin status

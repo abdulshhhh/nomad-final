@@ -93,7 +93,7 @@ router.get('/', async (req, res) => {
         { toDate: { $gte: new Date() } } // End date hasn't passed
       ]
     })
-      .populate('createdBy', 'fullName email')
+      .populate('createdBy', 'fullName email avatar')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -109,13 +109,103 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/trips/:tripId/join - Join a trip
+router.post('/:tripId/join', authenticate, async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.userId; // Get from auth middleware
+
+    if (!userId || !tripId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: userId and tripId'
+      });
+    }
+
+    // Forward to the joined trips route
+    const JoinedTrip = require('../models/JoinedTrip');
+    const Trip = require('../models/Trip');
+
+    // Get trip details first to validate ownership
+    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName avatar');
+
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        error: 'Trip not found'
+      });
+    }
+
+    // Check if user is trying to join their own trip
+    const tripCreatorId = trip.createdBy._id ? trip.createdBy._id.toString() : trip.createdBy.toString();
+    const joiningUserId = userId.toString();
+
+    if (tripCreatorId === joiningUserId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot join your own trip',
+        message: 'You cannot join a trip that you created. Use trip management to see participants.'
+      });
+    }
+
+    // Check if user has already joined this trip
+    const exists = await JoinedTrip.findOne({ userId, tripId });
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Already joined this trip'
+      });
+    }
+
+    // Check if trip is full before joining
+    const currentParticipants = await JoinedTrip.countDocuments({ tripId });
+    if (currentParticipants >= trip.maxPeople) {
+      return res.status(400).json({
+        success: false,
+        error: 'Trip is full',
+        message: `This trip is already full (${trip.maxPeople}/${trip.maxPeople} participants).`
+      });
+    }
+
+    // Create the joined trip record
+    await JoinedTrip.create({
+      userId,
+      tripId,
+      googleAccountName: null // No longer required
+    });
+
+    // Update trip participant count
+    await Trip.findByIdAndUpdate(tripId, {
+      $inc: { numberOfPeople: 1 }
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully joined trip to ${trip.destination}!`,
+      trip: {
+        id: trip._id,
+        destination: trip.destination,
+        organizer: trip.createdBy?.fullName || 'Trip Organizer'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error joining trip:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to join trip',
+      message: 'An unexpected error occurred while joining the trip.'
+    });
+  }
+});
+
 // GET /api/trips/:tripId/participants - Get trip participants for trip management
 router.get('/:tripId/participants', async (req, res) => {
   try {
     const { tripId } = req.params;
 
     // Find the trip and verify the user is the creator
-    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName email');
+    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName email avatar');
 
     if (!trip) {
       return res.status(404).json({
@@ -286,7 +376,7 @@ router.post(
       await newTrip.save();
 
       // Populate the createdBy field for the response
-      await newTrip.populate('createdBy', 'fullName email');
+      await newTrip.populate('createdBy', 'fullName email avatar');
 
       // 🪙 REWARD COINS FOR HOSTING TRIP (+5 coins)
       try {
@@ -482,7 +572,7 @@ router.delete('/:tripId/abandon', async (req, res) => {
     const { tripId } = req.params;
 
     // Find the trip
-    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName email');
+    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName email avatar');
     if (!trip) {
       return res.status(404).json({
         error: 'Trip not found'
@@ -711,7 +801,7 @@ router.get('/statistics/:tripId', async (req, res) => {
     const { tripId } = req.params;
 
     // Get trip details
-    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName');
+    const trip = await Trip.findById(tripId).populate('createdBy', 'fullName avatar');
     if (!trip) {
       return res.status(404).json({
         success: false,

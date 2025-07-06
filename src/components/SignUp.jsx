@@ -239,8 +239,13 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
               </div>
               <label htmlFor="agree-terms-signup" className="text-white/80 text-xs cursor-pointer leading-tight">
                 By signing up, you agree to our{' '}
-                <a href="#" className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors">
-                  Terms and Service
+                <a
+                  href="/terms-and-conditions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
+                >
+                  Terms & Conditions
                 </a>{' '}and{' '}
                 <a href="#" className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors">
                   Privacy Policy

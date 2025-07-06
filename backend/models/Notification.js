@@ -7,7 +7,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['trip_posted', 'trip_joined', 'trip_abandoned', 'join_request', 'trip_reminder', 'success', 'error', 'info'],
+    enum: ['trip_posted', 'trip_joined', 'trip_abandoned', 'trip_left', 'participant_left', 'join_request', 'trip_reminder', 'trip_completed', 'success', 'error', 'info'],
     required: true
   },
   title: {

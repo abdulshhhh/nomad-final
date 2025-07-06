@@ -71,7 +71,7 @@ router.get('/count/:userId', async (req, res) => {
 
 // POST route to join a trip
 router.post('/', authenticate, async (req, res) => {
-  const { userId, tripId, googleAccountName } = req.body;
+  const { userId, tripId } = req.body;
 
   if (!userId || !tripId) {
     return res.status(400).json({
@@ -139,7 +139,7 @@ router.post('/', authenticate, async (req, res) => {
     await JoinedTrip.create({
       userId,
       tripId,
-      googleAccountName: googleAccountName || null
+      googleAccountName: null // No longer required
     });
 
     // 📊 UPDATE TRIP PARTICIPANT COUNT
@@ -222,6 +222,133 @@ router.post('/', authenticate, async (req, res) => {
       success: false,
       error: 'Failed to join trip',
       message: 'An unexpected error occurred while joining the trip.'
+    });
+  }
+});
+
+// 🚪 LEAVE TRIP ENDPOINT - Remove user from trip and deduct 5 points
+router.delete('/leave-trip', authenticate, async (req, res) => {
+  try {
+    const { userId, tripId } = req.body;
+
+    if (!userId || !tripId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID and Trip ID are required'
+      });
+    }
+
+    // Check if user has actually joined this trip
+    const existingJoin = await JoinedTrip.findOne({ userId, tripId });
+    if (!existingJoin) {
+      return res.status(404).json({
+        success: false,
+        error: 'You have not joined this trip'
+      });
+    }
+
+    // Get trip details for notifications
+    const Trip = require('../models/Trip');
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        error: 'Trip not found'
+      });
+    }
+
+    // Remove the user from the trip
+    await JoinedTrip.deleteOne({ userId, tripId });
+
+    // 💰 DEDUCT POINTS FOR LEAVING TRIP (-5 coins penalty)
+    try {
+      const axios = require('axios');
+      await axios.post('http://localhost:5000/api/leaderboard/update-trip-stats', {
+        userId: userId,
+        action: 'leave', // New action for leaving trips
+        tripId: tripId,
+        tripDestination: trip.destination
+      });
+
+      // Emit real-time leaderboard update for penalty
+      if (io) {
+        io.emit('leaderboardUpdate', {
+          userId: userId,
+          action: 'leave',
+          coins: -5,
+          message: `Lost 5 coins for leaving trip to ${trip.destination}`,
+          penalty: true,
+          tripId: tripId,
+          tripDestination: trip.destination
+        });
+      }
+    } catch (coinError) {
+      console.error('Error deducting coins for leaving trip:', coinError);
+      // Continue with trip leaving even if coin deduction fails
+    }
+
+    // 📝 CREATE NOTIFICATIONS
+    const { createNotification } = require('./notification');
+
+    // Notify the user who left
+    await createNotification(
+      userId,
+      'trip_left',
+      'Trip Left 🚪',
+      `You have left the trip to ${trip.destination}. 5 coins have been deducted as penalty.`,
+      tripId,
+      trip.destination,
+      {
+        penalty: -5,
+        departure: trip.departure,
+        fromDate: trip.fromDate,
+        toDate: trip.toDate
+      }
+    );
+
+    // Notify trip organizer (only if createdBy exists)
+    if (trip.createdBy) {
+      const organizerId = trip.createdBy._id ? trip.createdBy._id : trip.createdBy;
+      await createNotification(
+        organizerId,
+        'participant_left',
+        'Participant Left Trip 👋',
+        `A participant has left your trip to ${trip.destination}.`,
+        tripId,
+        trip.destination,
+        {
+          leftUserId: userId,
+          totalParticipants: await JoinedTrip.countDocuments({ tripId })
+        }
+      );
+    }
+
+    // 🔄 UPDATE TRIP STATISTICS
+    const remainingParticipants = await JoinedTrip.countDocuments({ tripId });
+
+    // Emit real-time trip update
+    if (io) {
+      io.emit('tripUpdate', {
+        tripId: tripId,
+        action: 'participant_left',
+        participantCount: remainingParticipants,
+        userId: userId,
+        message: `User left trip to ${trip.destination}`
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully left trip to ${trip.destination}`,
+      penalty: -5,
+      remainingParticipants: remainingParticipants
+    });
+
+  } catch (error) {
+    console.error('Error leaving trip:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to leave trip'
     });
   }
 });

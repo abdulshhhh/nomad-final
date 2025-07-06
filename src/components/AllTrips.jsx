@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiMapPin, FiCalendar, FiUsers, FiArrowLeft, FiSearch, FiFilter, FiDollarSign, FiClock, FiRefreshCw, FiX, FiActivity } from "react-icons/fi";
+import { FiMapPin, FiCalendar, FiUsers, FiArrowLeft, FiSearch, FiFilter, FiDollarSign, FiClock, FiRefreshCw, FiX, FiActivity, FiMessageSquare } from "react-icons/fi";
 import { BsRecord2Fill } from 'react-icons/bs';
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -41,7 +41,7 @@ const generateActivitiesFromCategory = (category) => {
   return activityMap[category] || ['Sightseeing', 'Local Cuisine', 'Photography', 'Shopping', 'Relaxation'];
 };
 
-export default function AllTrips() {
+export default function AllTrips({ currentUser }) {
   // 🚀 STATE MANAGEMENT FOR REAL-TIME DATA
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,21 @@ export default function AllTrips() {
 
   const navigate = useNavigate();
 
-  // 🚀 FETCH REAL-TIME TRIPS FROM BACKEND
+  // � USER AUTHENTICATION AND JOIN TRIP STATES
+
+  const [joinedTrips, setJoinedTrips] = useState([]); // array of trip ids
+  const [notifications, setNotifications] = useState([]);
+
+  // Get effective user (fallback for development)
+  const effectiveUser = currentUser || {
+    id: 'development-user',
+    _id: 'development-user',
+    fullName: 'Development User',
+    email: 'dev@example.com',
+    avatar: '/assets/images/default-avatar.jpg'
+  };
+
+  // �🚀 FETCH REAL-TIME TRIPS FROM BACKEND
   const fetchTrips = async () => {
     try {
       setLoading(true);
@@ -115,34 +129,222 @@ export default function AllTrips() {
     }
   };
 
-  // 🔄 FETCH TRIPS ON COMPONENT MOUNT
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
-  // 🚀 JOIN TRIP FUNCTIONALITY
-  const handleJoinTrip = async (tripId) => {
+  // � FETCH USER'S JOINED TRIPS
+  const fetchJoinedTrips = async () => {
     try {
-      const googleAccountName = prompt("Please enter your Google account name:");
-      if (!googleAccountName) {
-        alert("Google account name is required to join a trip.");
-        return;
-      }
+      const userIdForAPI = effectiveUser._id || effectiveUser.id;
+      if (userIdForAPI && userIdForAPI !== 'development-user') {
+        const response = await fetch(`/api/joined-trips/${userIdForAPI}`, {
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
+          }
+        });
 
-      const response = await axios.post(`${BACKEND_URL}/api/trips/${tripId}/join`, {
-        googleAccountName
-      });
-
-      if (response.data.success) {
-        alert(`Successfully joined the trip! ${response.data.message}`);
-        // Refresh trips to update available spots
-        fetchTrips();
-      } else {
-        alert(`${response.data.message || 'Failed to join trip'}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setJoinedTrips(data.map(trip => trip.id || trip._id));
+          }
+        }
       }
     } catch (error) {
-      console.error('Error joining trip:', error);
-      alert(`${error.response?.data?.message || 'Failed to join trip. Please try again.'}`);
+      console.error('Error fetching joined trips:', error);
+    }
+  };
+
+  // �🔄 FETCH TRIPS AND JOINED TRIPS ON COMPONENT MOUNT
+  useEffect(() => {
+    fetchTrips();
+    fetchJoinedTrips();
+  }, [effectiveUser]);
+
+  // 🚀 JOIN TRIP FUNCTIONALITY - Same logic as Dashboard.jsx
+  const handleJoinTrip = async (tripId) => {
+    const tripObj = trips.find((t) => t.id === tripId);
+
+    if (!tripObj) {
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          type: "error",
+          title: "🚫 Trip Not Found",
+          message: "The trip you're trying to join could not be found.",
+          date: new Date().toISOString(),
+          read: false,
+        },
+        ...prev,
+      ]);
+      return;
+    }
+
+    // 🚫 ROBUST SELF-JOIN PREVENTION
+    // Get the current user's ID (handle both _id and id formats)
+    const currentUserId = effectiveUser._id || effectiveUser.id;
+    const tripCreatorId = tripObj.organizerId || tripObj.createdBy;
+
+    console.log('🔍 Join Trip Debug:', {
+      currentUserId,
+      tripCreatorId,
+      isOwnTrip: currentUserId && tripCreatorId && (currentUserId === tripCreatorId),
+      tripObj: {
+        id: tripObj.id,
+        organizerId: tripObj.organizerId,
+        createdBy: tripObj.createdBy,
+        organizer: tripObj.organizer,
+        title: tripObj.title
+      },
+      effectiveUser: {
+        id: effectiveUser.id,
+        _id: effectiveUser._id,
+        name: effectiveUser.fullName
+      }
+    });
+
+    // Check if user is trying to join their own trip
+    const isOwnTrip = currentUserId && tripCreatorId && (currentUserId === tripCreatorId);
+
+    if (isOwnTrip) {
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          type: "error",
+          title: "🚫 Cannot Join Your Own Trip",
+          message: "You cannot join a trip that you created. Use 'Manage Trip' to see participants and trip details.",
+          date: new Date().toISOString(),
+          read: false,
+        },
+        ...prev,
+      ]);
+      alert("🚫 Cannot Join Your Own Trip\n\nYou cannot join a trip that you created. Use 'Manage Trip' to see participants and trip details.");
+      return;
+    }
+
+    if (!joinedTrips.includes(tripId)) {
+      try {
+        // Use consistent user ID for API call
+        const userIdForAPI = effectiveUser._id || effectiveUser.id;
+
+        const response = await fetch("/api/joined-trips", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({
+            userId: userIdForAPI,
+            tripId: tripId,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          // Handle specific error cases from backend
+          if (result.error === 'Cannot join your own trip') {
+            alert("🚫 Cannot Join Your Own Trip\n\nYou cannot join a trip that you created. Use 'Manage Trip' to see participants and trip details.");
+            return;
+          } else if (result.error === 'Already joined this trip') {
+            alert("⚠️ Already Joined\n\nYou have already joined this trip.");
+            return;
+          }
+          throw new Error(result.message || "Failed to join trip");
+        }
+
+        setJoinedTrips((prev) => [...prev, tripId]);
+
+        // Show success notification
+        setNotifications((prev) => [
+          {
+            id: Date.now(),
+            type: "success",
+            title: "🎉 Successfully Joined Trip!",
+            message: `You have joined the trip to ${tripObj.destination}. The organizer has been notified.`,
+            date: new Date().toISOString(),
+            read: false,
+          },
+          ...prev,
+        ]);
+
+        alert(`🎉 Successfully joined the trip to ${tripObj.destination}! The organizer has been notified.`);
+
+        // 🔄 REFRESH DATA TO GET BACKEND UPDATES
+        // Refresh trips to get updated participant counts
+        setTimeout(() => {
+          fetchTrips(); // 📊 Refresh trips with updated statistics
+        }, 500); // Small delay to ensure backend data is updated
+
+      } catch (error) {
+        console.error("Error joining trip:", error);
+        alert("❌ Failed to Join Trip\n\n" + (error.message || "An unexpected error occurred while joining the trip."));
+      }
+    } else {
+      alert("⚠️ Already Joined\n\nYou have already joined this trip.");
+    }
+  };
+
+  // 🚪 LEAVE TRIP FUNCTIONALITY - Same logic as Dashboard.jsx
+  const handleLeaveTrip = async (tripId) => {
+    const tripObj = trips.find((t) => t.id === tripId);
+
+    if (!tripObj) {
+      alert("❌ Trip Not Found\n\nThe trip you're trying to leave could not be found.");
+      return;
+    }
+
+    // Confirm before leaving
+    const confirmLeave = window.confirm(
+      `🚪 Leave Trip to ${tripObj.destination}?\n\n` +
+      `Are you sure you want to leave this trip?\n\n` +
+      `⚠️ WARNING: You will lose 5 coins as a penalty for leaving.\n\n` +
+      `This action cannot be undone.`
+    );
+
+    if (!confirmLeave) {
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/joined-trips/leave-trip", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          userId: effectiveUser.id || effectiveUser._id,
+          tripId: tripId
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to leave trip");
+      }
+
+      // ✅ SUCCESS - Update local state
+      setJoinedTrips((prev) => prev.filter(id => id !== tripId));
+
+      // 🔄 Refresh trips data to get updated participant counts
+      fetchTrips();
+      fetchJoinedTrips();
+
+      // 📢 Show success notification
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          type: "warning", // Use warning type for penalty notifications
+          title: "Trip Left Successfully 🚪",
+          message: `You have left the trip to ${tripObj.destination}. 5 coins have been deducted as penalty.`,
+          timestamp: new Date().toISOString(),
+          read: false
+        },
+        ...prev
+      ]);
+
+    } catch (error) {
+      console.error("Error leaving trip:", error);
+      alert("❌ Failed to Leave Trip\n\n" + (error.message || "An unexpected error occurred while leaving the trip."));
     }
   };
 
@@ -489,26 +691,55 @@ export default function AllTrips() {
                       </p>
                     )}
 
-                    {/* 🚀 JOIN TRIP BUTTON */}
+                    {/* 🚀 JOIN TRIP BUTTON / JOINED ACTIONS */}
                     <div className="mt-4 pt-3 border-t border-[#d1c7b7]">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent card click
-                          handleJoinTrip(trip.id);
-                        }}
-                        disabled={trip.spots === 0}
-                        className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
-                          trip.spots === 0
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-[#f8a95d] hover:bg-[#f87c6d] text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
-                        }`}
-                      >
-                        {trip.spots === 0 ? (
-                          <><FiX className="inline mr-1" /> Trip Full</>
-                        ) : (
-                          <><FiActivity className="inline mr-1" /> Join Trip ({trip.spots} spots left)</>
-                        )}
-                      </button>
+                      {joinedTrips.includes(trip.id) ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-center py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-semibold">
+                            <FiActivity className="mr-1" /> Already Joined
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                // TODO: Add group chat functionality for AllTrips
+                                alert("Group Chat feature coming soon for AllTrips page!");
+                              }}
+                              className="py-2 px-3 bg-[#f8a95d] hover:bg-[#f87c6d] text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center"
+                            >
+                              <FiMessageSquare className="mr-1" /> Chat
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                handleLeaveTrip(trip.id);
+                              }}
+                              className="py-2 px-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center"
+                            >
+                              <FiX className="mr-1" /> Leave
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click
+                            handleJoinTrip(trip.id);
+                          }}
+                          disabled={trip.spots === 0}
+                          className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                            trip.spots === 0
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-[#f8a95d] hover:bg-[#f87c6d] text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                          }`}
+                        >
+                          {trip.spots === 0 ? (
+                            <><FiX className="inline mr-1" /> Trip Full</>
+                          ) : (
+                            <><FiActivity className="inline mr-1" /> Join Trip ({trip.spots} spots left)</>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -28,6 +28,7 @@ export default function NotificationSystem({
       case 'warning': return <FiAlertTriangle className="w-5 h-5 text-red-600" />; // 🚨 PENALTY NOTIFICATION
       case 'info': return <FiInfo className="w-5 h-5 text-blue-600" />;
       case 'trip': return <FiMapPin className="w-5 h-5 text-purple-600" />;
+      case 'trip_completed': return <FiCheckCircle className="w-5 h-5 text-green-600" />;
       case 'join': return <FiUsers className="w-5 h-5 text-orange-600" />;
       case 'reminder': return <FiCalendar className="w-5 h-5 text-yellow-600" />;
       default: return <FiBell className="w-5 h-5 text-gray-600" />;
@@ -44,6 +45,7 @@ export default function NotificationSystem({
       case 'warning': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-red-600 bg-red-50' : ''}`; // 🚨 PENALTY STYLING
       case 'info': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-blue-500' : ''}`;
       case 'trip': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-purple-500' : ''}`;
+      case 'trip_completed': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-green-500' : ''}`;
       case 'join': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-orange-500' : ''}`;
       case 'reminder': return `${baseClasses} ${borderClasses} ${!read ? 'border-l-yellow-500' : ''}`;
       default: return `${baseClasses} ${borderClasses} ${!read ? 'border-l-gray-500' : ''}`;

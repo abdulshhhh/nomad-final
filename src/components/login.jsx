@@ -253,7 +253,12 @@ export default function Login({ onSignUpClick, onBackToLanding, onLoginSuccess }
               </div>
               <label htmlFor="agree-terms" className="text-white/80 text-sm cursor-pointer leading-tight">
                 By continuing, you agree to our{' '}
-                <a href="#" className="underline text-[#FCCB6E] hover:text-yellow-300 font-semibold transition-colors">
+                <a
+                  href="/terms-and-conditions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-[#FCCB6E] hover:text-yellow-300 font-semibold transition-colors"
+                >
                   Terms & Conditions
                 </a>{' '}and{' '}
                 <a href="#" className="underline text-[#FCCB6E] hover:text-yellow-300 font-semibold transition-colors">

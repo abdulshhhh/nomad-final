@@ -267,6 +267,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     category: "",
     description: "",
     coverImage: null,
+    coverImagePreview: null, // For storing the preview URL
     googleAccountName: "",
     accommodation: "Will discuss further", // Add default value
   });
@@ -483,6 +484,89 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
 
     // --- POST TRIP HANDLER ---
   };
+
+  // --- LEAVE TRIP HANDLER ---
+  const handleLeaveTrip = async (tripId) => {
+    const tripObj = trips.find((t) => t.id === tripId);
+
+    if (!tripObj) {
+      alert("❌ Trip Not Found\n\nThe trip you're trying to leave could not be found.");
+      return;
+    }
+
+    // Confirm before leaving
+    const confirmLeave = window.confirm(
+      `🚪 Leave Trip to ${tripObj.destination}?\n\n` +
+      `Are you sure you want to leave this trip?\n\n` +
+      `⚠️ WARNING: You will lose 5 coins as a penalty for leaving.\n\n` +
+      `This action cannot be undone.`
+    );
+
+    if (!confirmLeave) {
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/joined-trips/leave-trip", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          userId: effectiveUser.id || effectiveUser._id,
+          tripId: tripId
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Failed to leave trip");
+      }
+
+      // ✅ SUCCESS - Update local state
+      setJoinedTrips((prev) => prev.filter(id => id !== tripId));
+
+      // 🔄 Refresh trips data to get updated participant counts
+      await fetchTrips();
+
+      // 📢 Show success notification
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          type: "warning", // Use warning type for penalty notifications
+          title: "Trip Left Successfully 🚪",
+          message: `You have left the trip to ${tripObj.destination}. 5 coins have been deducted as penalty.`,
+          timestamp: new Date().toISOString(),
+          read: false
+        },
+        ...prev
+      ]);
+
+      // 🚀 EMIT REAL-TIME PARTICIPANT UPDATE
+      if (socket) {
+        socket.emit('participantLeft', {
+          tripId: tripId,
+          userId: effectiveUser.id || effectiveUser._id,
+          participant: {
+            id: effectiveUser.id || effectiveUser._id,
+            name: effectiveUser.fullName,
+            email: effectiveUser.email,
+            leftAt: new Date().toISOString()
+          }
+        });
+      }
+
+      // Close trip details modal if open
+      setShowTripDetails(false);
+
+    } catch (error) {
+      console.error("Error leaving trip:", error);
+      alert("❌ Failed to Leave Trip\n\n" + (error.message || "An unexpected error occurred while leaving the trip."));
+    }
+  };
+
   // 🗓️ GET TODAY'S DATE IN YYYY-MM-DD FORMAT FOR DATE VALIDATION
   const getTodayDate = () => {
     const today = new Date();
@@ -584,7 +668,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             organizer: trip.createdBy?.fullName || "Unknown",
             organizerId: creatorId, // Use consistent creator ID
             createdBy: creatorId,   // Add this for backup reference
-            organizerAvatar: "/assets/images/default-avatar.jpg",
+            organizerAvatar: trip.createdBy?.avatar || "/assets/images/default-avatar.jpg",
             tags: [trip.category, trip.transport],
             joinedMembers: trip.joinedMembers || [],
             departure: trip.departure,
@@ -648,8 +732,20 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   const handleImageChange = (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
-      // Store the actual file object for FormData
-      setNewTrip((prev) => ({ ...prev, coverImage: file }));
+      // Clean up previous preview URL if it exists
+      if (newTrip.coverImagePreview) {
+        URL.revokeObjectURL(newTrip.coverImagePreview);
+      }
+
+      // Create a preview URL for the selected file
+      const previewUrl = URL.createObjectURL(file);
+
+      // Store both the file object (for FormData) and preview URL
+      setNewTrip((prev) => ({
+        ...prev,
+        coverImage: file,
+        coverImagePreview: previewUrl
+      }));
     }
   };
   const handlePostTrip = async (e) => {
@@ -731,6 +827,11 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           }
         }, 2000); // Wait 2 seconds to show success message first
 
+        // Clean up preview URL before resetting
+        if (newTrip.coverImagePreview) {
+          URL.revokeObjectURL(newTrip.coverImagePreview);
+        }
+
         setNewTrip({
           destination: "",
           departure: "",
@@ -745,6 +846,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           category: "",
           description: "",
           coverImage: null,
+          coverImagePreview: null,
           googleAccountName: "",
         });
         setNotifications((prev) => [
@@ -936,10 +1038,16 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   };
 
   // --- VIEW TRIP HANDLER ---
-  const handleViewTrip = (trip) => {
+  const handleViewTrip = async (trip) => {
     console.log("Viewing trip:", trip); // Add this to debug
     setSelectedTrip({...trip}); // Create a new object to ensure all properties are copied
     setShowTripDetails(true);
+
+    // Fetch detailed trip statistics and organizer info
+    const tripId = trip.id || trip._id;
+    if (tripId) {
+      await fetchTripDetails(tripId);
+    }
   };
 
   // --- MANAGE TRIP HANDLER ---
@@ -1578,6 +1686,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         category: "",
         description: "",
         coverImage: null,
+        coverImagePreview: null,
       });
     }
   }, [showPostTrip]);
@@ -1647,7 +1756,15 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     }
   }, [effectiveUser]);
 
-
+  // Cleanup effect for image preview URL
+  useEffect(() => {
+    return () => {
+      // Clean up the preview URL when component unmounts
+      if (newTrip.coverImagePreview) {
+        URL.revokeObjectURL(newTrip.coverImagePreview);
+      }
+    };
+  }, [newTrip.coverImagePreview]);
 
   return (
     <>
@@ -2622,7 +2739,11 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                         </div>
                         <div className="bg-[#f8f4e3] p-3 rounded-lg">
                           <p className="text-2xl font-bold text-[#f87c6d]">
-                            {tripStatistics ? tripStatistics.durationDays : (selectedTrip.duration && typeof selectedTrip.duration === 'string' ? selectedTrip.duration.split(" ")[0] : "N/A")}
+                            {tripStatistics ? tripStatistics.durationDays :
+                             (selectedTrip.duration && typeof selectedTrip.duration === 'string' ? selectedTrip.duration.split(" ")[0] :
+                              (selectedTrip.fromDate && selectedTrip.toDate ?
+                                Math.ceil((new Date(selectedTrip.toDate) - new Date(selectedTrip.fromDate)) / (1000 * 60 * 60 * 24)) :
+                                "N/A"))}
                           </p>
                           <p className="text-[#5E5854] text-sm">Days</p>
                         </div>
@@ -2838,18 +2959,26 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                       </button>
 
                       {joinedTrips.includes(selectedTrip.id) ? (
-                        <button
-                        onClick={() => {
-                          console.log('Opening group chat for trip:', selectedTrip?.id); // Debug log
-                          console.log('Selected trip data:', selectedTrip); // Debug log
-                          console.log('Current user:', currentUser); // Debug log
-                          setShowGroupChat(true);
-                          setShowTripDetails(false);
-                        }}
-                        className="flex-1 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white py-3 rounded-xl transition-colors font-cinzel flex items-center justify-center"
-                        >
-                          <FiMessageSquare className="mr-2" /> Group Chat
+                        <>
+                          <button
+                            onClick={() => {
+                              console.log('Opening group chat for trip:', selectedTrip?.id); // Debug log
+                              console.log('Selected trip data:', selectedTrip); // Debug log
+                              console.log('Current user:', currentUser); // Debug log
+                              setShowGroupChat(true);
+                              setShowTripDetails(false);
+                            }}
+                            className="flex-1 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white py-3 rounded-xl transition-colors font-cinzel flex items-center justify-center"
+                          >
+                            <FiMessageSquare className="mr-2" /> Group Chat
                           </button>
+                          <button
+                            onClick={() => handleLeaveTrip(selectedTrip.id)}
+                            className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 rounded-xl transition-colors font-cinzel flex items-center justify-center"
+                          >
+                            <FiX className="mr-2" /> Leave Trip
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => handleJoinTrip(selectedTrip.id)}
@@ -3737,21 +3866,26 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                           {newTrip.coverImage ? "Change Image" : "Upload Image"}
                         </label>
                       </div>
-                      {newTrip.coverImage && (
+                      {newTrip.coverImage && newTrip.coverImagePreview && (
                         <div className="w-24 h-24 relative">
                           <img
-                            src={newTrip.coverImage}
+                            src={newTrip.coverImagePreview}
                             alt="Trip cover preview"
                             className="w-full h-full object-cover rounded-lg border border-[#d1c7b7]"
                           />
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              // Clean up the preview URL
+                              if (newTrip.coverImagePreview) {
+                                URL.revokeObjectURL(newTrip.coverImagePreview);
+                              }
                               setNewTrip((prev) => ({
                                 ...prev,
                                 coverImage: null,
-                              }))
-                            }
+                                coverImagePreview: null,
+                              }));
+                            }}
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
                           >
                             <FiX className="w-4 h-4" />

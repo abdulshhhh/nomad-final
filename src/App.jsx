@@ -18,6 +18,7 @@ const Loading = lazy(() => import('./components/Loading'));
 const OAuthSuccess = lazy(() => import('./components/OAuthSuccess'));
 const OAuthError = lazy(() => import('./components/OAuthError'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
 
 
 const STORAGE_KEYS = {
@@ -158,8 +159,9 @@ const App = () => {
             path="/profile"
             element={<Profile currentUser={currentUser} />}
           />
-          <Route path="/all-trips" element={<AllTrips />} />
+          <Route path="/all-trips" element={<AllTrips currentUser={currentUser} />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
           {/* 🔐 ADMIN DASHBOARD ROUTE */}
           <Route
             path="/admin/*"
