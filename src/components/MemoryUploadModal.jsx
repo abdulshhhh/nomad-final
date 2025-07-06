@@ -119,19 +119,22 @@ export default function MemoryUploadModal({
   }, [previews.length]); // Re-attach when the number of previews changes
 
   const handleUpload = async () => {
+    let progressInterval = null;
+    
     try {
       setIsUploading(true);
       setError(null);
+      setProgress(0);
       
-      // Create progress simulation
-      const interval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90)); // Only go up to 90% until actual completion
+      // Create progress simulation with a reference we can reliably clear
+      progressInterval = setInterval(() => {
+        setProgress(prev => Math.min(prev + 10, 90));
       }, 300);
       
       // Create form data
       const formData = new FormData();
       files.forEach(file => {
-        formData.append('images', file); // Using 'images' as the field name
+        formData.append('images', file);
       });
       formData.append('description', description);
       formData.append('location', location);
@@ -141,13 +144,6 @@ export default function MemoryUploadModal({
       if (!token) {
         throw new Error('Authentication token not found. Please log in again.');
       }
-      
-      console.log('Uploading memory to:', `${BACKEND_URL}/api/memories`);
-      console.log('Form data:', {
-        description,
-        location,
-        fileCount: files.length
-      });
       
       // Send to server
       const response = await axios.post(
@@ -160,16 +156,21 @@ export default function MemoryUploadModal({
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setProgress(Math.min(percentCompleted, 95)); // Cap at 95% until server confirms
+            setProgress(Math.min(percentCompleted, 95));
           }
         }
       );
       
-      clearInterval(interval);
+      // Clear the interval immediately after response
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      
+      // Set progress to 100% to indicate completion
       setProgress(100);
       
-      console.log('Upload response:', response.data);
-      
+      // Process successful response
       if (response.data.success) {
         // Call the onUpload callback with the memory data
         if (typeof onUpload === 'function') {
@@ -186,19 +187,23 @@ export default function MemoryUploadModal({
           onSuccess(response.data.memory);
         }
         
-        // Trigger a refresh of the memories list
-        setTimeout(() => {
-          setIsUploading(false);
-          onClose();
-        }, 500); // Short delay to show 100% completion
+        // Close the modal immediately
+        onClose();
       } else {
         throw new Error(response.data.message || 'Failed to upload memory');
       }
-    } catch (err) {
-      clearInterval(interval);
-      console.error('Error uploading memory:', err);
-      setError(err.message || 'Failed to upload memory. Please try again.');
+    } catch (error) {
+      console.error('Upload error:', error);
+      
+      // Ensure interval is cleared on error
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      
       setIsUploading(false);
+      setProgress(0);
+      setError(error.message || 'An error occurred during upload');
     }
   };
 

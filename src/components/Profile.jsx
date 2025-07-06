@@ -62,6 +62,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
   const sliderIntervalRef = useRef(null);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Add this state variable
   const [userStats, setUserStats] = useState({
@@ -275,7 +276,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
     };
 
     fetchUserMemories();
-  }, [currentUser, joinedTripsData]);
+  }, [currentUser, joinedTripsData, refreshTrigger]);
 
   // Fix the close button functionality
   const handleClose = () => {
@@ -1166,9 +1167,9 @@ export default function Profile({ currentUser, onClose, onMessage }) {
             onUpload={handleMemoryUploadComplete}
             onSuccess={(newMemory) => {
               // Refresh memories after successful upload
-              if (fetchUserMemories) {
-                fetchUserMemories();
-              }
+              // Use the useEffect dependency instead of calling fetchUserMemories directly
+              // This will trigger the useEffect that fetches memories
+              setRefreshTrigger(prev => prev + 1);
             }}
           />
         )}
