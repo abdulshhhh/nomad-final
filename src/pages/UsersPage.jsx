@@ -207,26 +207,40 @@ export default function UsersPage() {
     
     try {
       setLoading(true);
+      const token = localStorage.getItem('authToken');
       
-      // For demo purposes, just update the UI state
-      console.log(`Removing user from UI: ${userToDelete.fullName || userToDelete.name || userToDelete.email}`);
+      // Make the actual API call to delete the user
+      const response = await axios.delete(
+        `${BACKEND_URL}/api/admin/users/${userToDelete.id || userToDelete._id}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          }
+        }
+      );
       
-      // Remove user from state
-      setUsers(prevUsers => prevUsers.filter(user => 
-        (user._id || user.id) !== (userToDelete._id || userToDelete.id)
-      ));
-      setFilteredUsers(prevFiltered => prevFiltered.filter(user => 
-        (user._id || user.id) !== (userToDelete._id || userToDelete.id)
-      ));
-      
-      // Show success message
-      alert(`User ${userToDelete.fullName || userToDelete.name || userToDelete.email} has been removed.`);
+      if (response.data && response.data.success) {
+        console.log(`User ${userToDelete.fullName || userToDelete.name || userToDelete.email} deleted successfully`);
+        
+        // Remove user from state
+        setUsers(prevUsers => prevUsers.filter(user => 
+          (user._id || user.id) !== (userToDelete._id || userToDelete.id)
+        ));
+        setFilteredUsers(prevFiltered => prevFiltered.filter(user => 
+          (user._id || user.id) !== (userToDelete._id || userToDelete.id)
+        ));
+        
+        // Show success message
+        alert(`User ${userToDelete.fullName || userToDelete.name || userToDelete.email} has been removed.`);
+      } else {
+        throw new Error(response.data?.error || 'Failed to delete user');
+      }
       
       // Reset UI state
       setShowDeleteConfirm(false);
       setUserToDelete(null);
     } catch (err) {
-      console.error("Error handling user deletion:", err);
+      console.error("Error deleting user:", err);
       alert(`Failed to remove user: ${err.message}`);
     } finally {
       setLoading(false);
