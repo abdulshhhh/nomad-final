@@ -226,7 +226,7 @@ const MemoryDetail = () => {
   const userName = user?.fullName || user?.name || 'User';
   
   // Get user avatar with fallback
-  const userAvatar = user?.avatar || user?.profilePicture || '/assets/images/default-avatar.jpg';
+  const userAvatar = user?.avatar || user?.profilePicture || '/assets/images/default-avatar.webp';
 
   return (
     <div className="memory-detail-page">
@@ -251,7 +251,7 @@ const MemoryDetail = () => {
                 alt={userName} 
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = '/assets/images/default-avatar.jpg';
+                  e.target.src = '/assets/images/default-avatar.webp';
                 }}
               />
             </div>

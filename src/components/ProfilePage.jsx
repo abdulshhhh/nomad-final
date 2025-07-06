@@ -144,11 +144,11 @@ export default function ProfilePage({ onClose, currentUser }) {
           <div className="flex items-center space-x-4">
             <div className="relative">
               <img
-                src={profileData?.avatar || currentUser?.avatar || "/assets/images/default-avatar.jpg"}
+                src={profileData?.avatar || currentUser?.avatar || "/assets/images/default-avatar.webp"}
                 alt={profileData?.name}
                 className="w-16 h-16 rounded-full border-4 border-[#f8d56b] object-cover"
                 onError={(e) => {
-                  e.target.src = "/assets/images/default-avatar.jpg";
+                  e.target.src = "/assets/images/default-avatar.webp";
                 }}
               />
               <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] rounded-full p-2">

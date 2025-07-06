@@ -244,7 +244,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     name: 'Development User',
     fullName: 'Development User',
     email: 'dev@example.com',
-    avatar: '/assets/images/Alexrivera.jpeg'
+    avatar: '/assets/images/default-avatar.webp'
   };
 
   console.log('Dashboard currentUser:', currentUser);
@@ -1849,12 +1849,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 >
                   <div className="relative w-10 h-10">
                     <img
-                    src={profileData?.avatar || effectiveUser.avatar || "/assets/images/default-avatar.jpg"}
+                    src={profileData?.avatar || effectiveUser.avatar || "/assets/images/default-avatar.webp"}
                     alt="Profile"
                     className="w-10 h-10 rounded-full border-2 border-[#f8d56b] object-cover"
                     onError={(e) => {
-                      if (!e.target.src.endsWith("/Alexriver.jpeg")) {
-                        e.target.src = "/assets/images/Alexrivera.jpeg";
+                      if (!e.target.src.endsWith("/assets/images/default-avatar.webp")) {
+                        e.target.src = "/assets/images/default-avatar.webp";
                       }
                       }}
                       />

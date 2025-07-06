@@ -139,7 +139,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
   // Add this function to handle avatar display
   const getAvatarUrl = () => {
     // Always return a default image to stop the blinking
-    return "/assets/images/default-avatar.jpg";
+    return "/assets/images/default-avatar.webp";
   };
 
   // Add this to debug the avatar URL
@@ -187,7 +187,7 @@ export default function Profile({ currentUser, onClose, onMessage }) {
             phone: currentUser?.phone || "",
             travelCategories: currentUser?.travelCategories || [],
             languages: currentUser?.languages || [],
-            avatar: currentUser?.avatar || "/assets/images/default-avatar.jpg",
+            avatar: currentUser?.avatar || "/assets/images/default-avatar.webp",
           });
         }
       } finally {
@@ -503,12 +503,12 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         onError={(e) => {
                           console.log("Image load error, using fallback");
                           e.target.onerror = null;
-                          e.target.src = "/assets/images/default-avatar.jpg";
+                          e.target.src = "/assets/images/default-avatar.webp";
                         }}
                       />
                     ) : (
                       <img
-                        src="/assets/images/default-avatar.jpg"
+                        src="/assets/images/default-avatar.webp"
                         alt={profileData?.fullName || "User"}
                         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                       />
