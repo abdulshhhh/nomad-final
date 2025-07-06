@@ -229,6 +229,7 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
                   checked={agreed}
                   onChange={handleCheckboxChange}
                   className="w-5 h-5 bg-white/20 border-2 border-white/50 rounded appearance-none cursor-pointer checked:bg-[#FCCB6E] checked:border-[#FCCB6E] focus:outline-none focus:ring-2 focus:ring-[#FCCB6E] focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200"
+                  required
                 />
                 {/* Custom checkmark */}
                 <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-200 ${agreed ? 'opacity-100' : 'opacity-0'}`}>
@@ -241,13 +242,22 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
                 By signing up, you agree to our{' '}
                 <a
                   href="/terms-and-conditions"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.open('/terms-and-conditions', '_blank');
+                  }}
                   className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
                 >
                   Terms & Conditions
                 </a>{' '}and{' '}
-                <a href="#" className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors">
+                <a 
+                  href="/terms-and-conditions#privacy"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.open('/terms-and-conditions#privacy', '_blank');
+                  }}
+                  className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
+                >
                   Privacy Policy
                 </a>.
               </label>
