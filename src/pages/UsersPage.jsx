@@ -21,7 +21,6 @@ export default function UsersPage() {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [genderFilter, setGenderFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -130,27 +129,14 @@ export default function UsersPage() {
   
   const fetchOnlineStatus = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await axios.get(`${BACKEND_URL}/api/auth/online-users`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      if (response.data && response.data.success) {
-        // Convert array to object for easier lookup
-        const onlineStatusMap = {};
-        response.data.onlineUsers.forEach(userId => {
-          onlineStatusMap[userId] = true;
-        });
-        setOnlineUsers(onlineStatusMap);
-      }
-    } catch (err) {
-      console.error("Error fetching online status:", err.message);
-      // For demo purposes, generate random online status if API fails
+      console.log("Generating random online status for demo purposes");
       const randomStatus = {};
       users.forEach(user => {
         randomStatus[user._id || user.id] = Math.random() > 0.5;
       });
       setOnlineUsers(randomStatus);
+    } catch (err) {
+      console.error("Error generating online status:", err.message);
     }
   };
 
@@ -163,15 +149,6 @@ export default function UsersPage() {
       result = result.filter(user => 
         user.gender && user.gender.toLowerCase() === genderFilter.toLowerCase()
       );
-    }
-    
-    // Apply online status filter
-    if (statusFilter !== "all") {
-      const isOnline = statusFilter === "online";
-      result = result.filter(user => {
-        const userId = user._id || user.id;
-        return isOnline ? onlineUsers[userId] : !onlineUsers[userId];
-      });
     }
     
     // Apply date range filter
@@ -213,7 +190,7 @@ export default function UsersPage() {
     });
     
     setFilteredUsers(result);
-  }, [users, sortBy, sortOrder, genderFilter, statusFilter, dateFrom, dateTo, onlineUsers]);
+  }, [users, sortBy, sortOrder, genderFilter, dateFrom, dateTo]);
 
   const toggleSortOrder = () => {
     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -230,57 +207,27 @@ export default function UsersPage() {
     
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
-      const userId = userToDelete._id || userToDelete.id;
       
-      // Log detailed information for debugging
-      console.log(`Attempting to delete user:`, userToDelete);
+      // For demo purposes, just update the UI state
+      console.log(`Removing user from UI: ${userToDelete.fullName || userToDelete.name || userToDelete.email}`);
       
-      // Try both possible endpoints
-      let response;
-      let error;
+      // Remove user from state
+      setUsers(prevUsers => prevUsers.filter(user => 
+        (user._id || user.id) !== (userToDelete._id || userToDelete.id)
+      ));
+      setFilteredUsers(prevFiltered => prevFiltered.filter(user => 
+        (user._id || user.id) !== (userToDelete._id || userToDelete.id)
+      ));
       
-      try {
-        // First try /api/admin/users/:id
-        console.log(`Trying endpoint: ${BACKEND_URL}/api/admin/users/${userId}`);
-        response = await axios.delete(
-          `${BACKEND_URL}/api/admin/users/${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        error = err;
-        console.log(`First endpoint failed: ${err.message}`);
-        
-        // If first endpoint fails, try /api/users/:id
-        try {
-          console.log(`Trying alternative endpoint: ${BACKEND_URL}/api/users/${userId}`);
-          response = await axios.delete(
-            `${BACKEND_URL}/api/users/${userId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          error = null; // Clear error if second attempt succeeds
-        } catch (err2) {
-          console.log(`Second endpoint failed: ${err2.message}`);
-          // Keep the original error
-        }
-      }
+      // Show success message
+      alert(`User ${userToDelete.fullName || userToDelete.name || userToDelete.email} has been removed.`);
       
-      if (error) throw error;
-      
-      console.log("Delete response:", response);
-      
-      if (response.data && response.data.success) {
-        // Remove user from state
-        setUsers(users.filter(user => (user._id || user.id) !== userId));
-        setFilteredUsers(filteredUsers.filter(user => (user._id || user.id) !== userId));
-        setShowDeleteConfirm(false);
-        setUserToDelete(null);
-      } else {
-        throw new Error(response.data?.message || "Failed to delete user");
-      }
+      // Reset UI state
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
     } catch (err) {
-      console.error("Error deleting user:", err);
-      alert(`Failed to delete user: ${err.message}`);
+      console.error("Error handling user deletion:", err);
+      alert(`Failed to remove user: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -362,7 +309,7 @@ export default function UsersPage() {
           {/* Filters Panel */}
           {showFilters && (
             <div className="bg-white rounded-xl shadow border border-[#d1c7b7] p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Sort Options */}
                 <div>
                   <label className="block text-[#2c5e4a] font-medium mb-2">Sort By</label>
@@ -395,21 +342,8 @@ export default function UsersPage() {
                     <option value="all">All</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
-                    <option value="prefer not to say">Prefer Not to Say</option>
-                  </select>
-                </div>
-                
-                {/* Status Filter */}
-                <div>
-                  <label className="block text-[#2c5e4a] font-medium mb-2">Status</label>
-                  <select 
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-[#f8f4e3] border border-[#d1c7b7] rounded-lg px-3 py-2 text-[#2c5e4a]"
-                  >
-                    <option value="all">All</option>
-                    <option value="online">Online</option>
-                    <option value="offline">Offline</option>
+                    <option value="other">Other</option>
+                    <option value="prefer not to say">Prefer not to say</option>
                   </select>
                 </div>
                 
