@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const slides = [
   {
@@ -26,6 +27,8 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
     password: ''
   });
   const [agreed, setAgreed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -231,35 +234,32 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
                   className="w-5 h-5 bg-white/20 border-2 border-white/50 rounded appearance-none cursor-pointer checked:bg-[#FCCB6E] checked:border-[#FCCB6E] focus:outline-none focus:ring-2 focus:ring-[#FCCB6E] focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200"
                   required
                 />
-                {/* Custom checkmark */}
                 <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-200 ${agreed ? 'opacity-100' : 'opacity-0'}`}>
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
               </div>
-              <label htmlFor="agree-terms-signup" className="text-white/80 text-xs cursor-pointer leading-tight">
+              <label htmlFor="agree-terms-signup" className="text-white/80 text-sm cursor-pointer leading-tight">
                 By signing up, you agree to our{' '}
-                <a
-                  href="/terms-and-conditions"
+                <span
                   onClick={(e) => {
                     e.preventDefault();
-                    window.open('/terms-and-conditions', '_blank');
+                    navigate('/terms-and-conditions', { state: { from: location.pathname } });
                   }}
-                  className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
+                  className="underline text-[#FCCB6E] hover:text-yellow-300 font-semibold transition-colors cursor-pointer"
                 >
                   Terms & Conditions
-                </a>{' '}and{' '}
-                <a 
-                  href="/terms-and-conditions#privacy"
+                </span>{' '}and{' '}
+                <span 
                   onClick={(e) => {
                     e.preventDefault();
-                    window.open('/terms-and-conditions#privacy', '_blank');
+                    navigate('/terms-and-conditions', { state: { from: location.pathname } });
                   }}
-                  className="underline text-yellow-400 hover:text-yellow-300 font-semibold transition-colors"
+                  className="underline text-[#FCCB6E] hover:text-yellow-300 font-semibold transition-colors cursor-pointer"
                 >
                   Privacy Policy
-                </a>.
+                </span>.
               </label>
             </div>
 
