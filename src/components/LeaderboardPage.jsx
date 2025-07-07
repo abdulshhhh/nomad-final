@@ -13,15 +13,164 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
 
+  // Add this helper function near your other utility functions
+  const getReliableAvatarUrl = (user) => {
+    if (!user) return "/assets/images/default-avatar.webp";
+    
+    const userId = user.id || user._id;
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    
+    // If user has an avatar property that's a valid URL, use it
+    if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:'))) {
+      return user.avatar;
+    }
+    
+    // If we have a userId, construct a reliable URL to the backend avatar endpoint
+    if (userId) {
+      return `${BACKEND_URL}/api/users/${userId}/avatar`;
+    }
+    
+    // Fallback to default avatar
+    return "/assets/images/default-avatar.webp";
+  };
+
+  // Add this function to fetch complete profile data including avatar
+  const fetchCompleteProfileData = async (userId) => {
+    if (!userId) {
+      console.warn('No userId provided to fetchCompleteProfileData');
+      return null;
+    }
+    
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    console.log(`Fetching complete profile for user ID: ${userId}`);
+    
+    try {
+      // Try to get profile data first (more detailed)
+      try {
+        console.log(`Trying profile endpoint: ${BACKEND_URL}/api/profile/${userId}`);
+        const profileResponse = await axios.get(
+          `${BACKEND_URL}/api/profile/${userId}`,
+          { 
+            headers,
+            timeout: 5000 // Add timeout to avoid hanging requests
+          }
+        );
+        
+        console.log('Profile response:', profileResponse.data);
+        
+        if (profileResponse.data && profileResponse.data.success) {
+          // Process avatar URL
+          let avatarUrl = profileResponse.data.profile.avatar;
+          
+          // If avatar is not a data URL or absolute URL, ensure it has the correct path
+          if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+            // If it doesn't start with a slash, add one
+            if (!avatarUrl.startsWith('/')) {
+              avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+            } else {
+              avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+            }
+          }
+          
+          // If no avatar, try to get it directly
+          if (!avatarUrl) {
+            avatarUrl = `${BACKEND_URL}/api/users/${userId}/avatar`;
+          }
+          
+          return {
+            ...profileResponse.data.profile,
+            avatar: avatarUrl
+          };
+        }
+      } catch (profileErr) {
+        console.log("Profile fetch failed:", profileErr.message);
+      }
+      
+      // Fallback to user endpoint
+      console.log(`Trying user endpoint: ${BACKEND_URL}/api/auth/users/${userId}`);
+      const userResponse = await axios.get(
+        `${BACKEND_URL}/api/auth/users/${userId}`,
+        { 
+          headers,
+          timeout: 5000
+        }
+      );
+      
+      console.log('User response:', userResponse.data);
+      
+      if (userResponse.data && userResponse.data.success) {
+        // Process avatar URL
+        let avatarUrl = userResponse.data.user.avatar;
+        
+        // If avatar is not a data URL or absolute URL, ensure it has the correct path
+        if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+          // If it doesn't start with a slash, add one
+          if (!avatarUrl.startsWith('/')) {
+            avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+          } else {
+            avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+          }
+        }
+        
+        // If no avatar, try to get it directly
+        if (!avatarUrl) {
+          avatarUrl = `${BACKEND_URL}/api/users/${userId}/avatar`;
+        }
+        
+        return {
+          ...userResponse.data.user,
+          avatar: avatarUrl
+        };
+      }
+    } catch (err) {
+      console.error("Error fetching user details:", err.message);
+      
+      // Return a minimal profile with direct avatar URL as fallback
+      return {
+        id: userId,
+        avatar: `${BACKEND_URL}/api/users/${userId}/avatar`
+      };
+    }
+    
+    return null;
+  };
+
   // 🔥 FETCH DYNAMIC LEADERBOARD DATA (TOP 10 ONLY)
   const fetchLeaderboard = async () => {
     try {
       setLoading(true);
       const response = await axios.get('http://localhost:5000/api/leaderboard');
+      console.log("Leaderboard API response:", response.data);
+      
       if (response.data.success) {
         // 🏆 LIMIT TO TOP 10 USERS ONLY
         const top10Users = response.data.leaderboard.slice(0, 10);
-        setLeaderboardData(top10Users);
+        
+        // Fetch complete profile data for each user
+        const enhancedUsers = await Promise.all(
+          top10Users.map(async (user) => {
+            const userId = user.id || user._id;
+            if (!userId) return user;
+            
+            const profileData = await fetchCompleteProfileData(userId);
+            if (profileData) {
+              return {
+                ...user,
+                ...profileData,
+                // Ensure we have consistent property names
+                name: profileData.fullName || profileData.name || user.name,
+                avatar: profileData.avatar || user.avatar
+              };
+            }
+            return user;
+          })
+        );
+        
+        console.log("Enhanced users with profile data:", enhancedUsers);
+        setLeaderboardData(enhancedUsers);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -208,11 +357,12 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                           <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full blur-sm opacity-50 animate-pulse"></div>
                             <img
-                              src={leaderboardData[1]?.avatar || "/assets/images/Alexrivera.jpeg"}
+                              src={getReliableAvatarUrl(leaderboardData[1])}
                               alt={leaderboardData[1]?.name}
                               className="relative w-16 h-16 rounded-full border-3 border-gray-300 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-gray-300/70 transition-all duration-300"
                               onError={(e) => {
-                                e.target.src = "/assets/images/Alexrivera.jpeg";
+                                e.target.onerror = null; // Prevent infinite loop
+                                e.target.src = "/assets/images/default-avatar.webp";
                               }}
                             />
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
@@ -264,11 +414,12 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                           <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full blur-lg opacity-60 animate-pulse"></div>
                             <img
-                              src={leaderboardData[0]?.avatar || "/assets/images/Alexrivera.jpeg"}
+                              src={getReliableAvatarUrl(leaderboardData[0])}
                               alt={leaderboardData[0]?.name}
                               className="relative w-20 h-20 rounded-full border-4 border-yellow-400 object-cover shadow-2xl ring-3 ring-white/50 group-hover:ring-yellow-400/70 transition-all duration-300"
                               onError={(e) => {
-                                e.target.src = "/assets/images/Alexrivera.jpeg";
+                                e.target.onerror = null; // Prevent infinite loop
+                                e.target.src = "/assets/images/default-avatar.webp";
                               }}
                             />
                             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
@@ -317,11 +468,12 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                           <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur-sm opacity-50 animate-pulse"></div>
                             <img
-                              src={leaderboardData[2]?.avatar || "/assets/images/Alexrivera.jpeg"}
+                              src={getReliableAvatarUrl(leaderboardData[2])}
                               alt={leaderboardData[2]?.name}
                               className="relative w-14 h-14 rounded-full border-3 border-orange-400 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-orange-400/70 transition-all duration-300"
                               onError={(e) => {
-                                e.target.src = "/assets/images/Alexrivera.jpeg";
+                                e.target.onerror = null; // Prevent infinite loop
+                                e.target.src = "/assets/images/default-avatar.webp";
                               }}
                             />
                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
@@ -431,11 +583,12 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                       <div className="relative group/avatar">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#f8d56b] to-[#f8a95d] rounded-full blur-md opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
                         <img
-                          src={user.avatar || "/assets/images/Alexrivera.jpeg"}
+                          src={getReliableAvatarUrl(user)}
                           alt={user.name}
                           className="relative w-20 h-20 rounded-full border-4 border-[#f8d56b] object-cover shadow-xl ring-4 ring-white/50 group-hover/avatar:ring-[#f8d56b]/50 transition-all duration-300 group-hover/avatar:scale-110"
                           onError={(e) => {
-                            e.target.src = "/assets/images/Alexrivera.jpeg";
+                            e.target.onerror = null; // Prevent infinite loop
+                            e.target.src = "/assets/images/default-avatar.webp";
                           }}
                         />
                         {/* Online Status Indicator */}
