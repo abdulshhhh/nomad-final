@@ -660,12 +660,12 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                   
                   {/* Name and bio next to profile picture */}
                   <div>
-                    <h2 className="text-base font-cinzel font-bold text-white mb-1">{profileData.fullName}</h2>
-
-                    {/* 🏅 NOMADNOVA TITLE DISPLAY */}
-                    <div className="flex items-center mb-2">
-                      <span className="text-yellow-400 text-sm mr-2">🏅</span>
+                    <div className="flex items-center mb-1">
+                      <h2 className="text-base font-cinzel font-bold text-white mr-2">{profileData.fullName}</h2>
+                      
+                      {/* 🏅 NOMADNOVA TITLE DISPLAY - Moved next to name */}
                       <span className="text-yellow-300 text-xs font-semibold bg-yellow-500/20 px-2 py-1 rounded-full border border-yellow-400/30">
+                        <span className="text-yellow-400 mr-1">🏅</span>
                         {profileData.title || 'New Traveler'}
                       </span>
                     </div>
