@@ -169,4 +169,45 @@ router.post('/create', authenticate, async (req, res) => {
   }
 });
 
+// Add a direct avatar endpoint
+router.get('/users/:userId/avatar', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    // Find the profile
+    const profile = await Profile.findOne({ userId });
+    
+    if (!profile || !profile.avatar) {
+      // If no profile or avatar, return default avatar
+      return res.redirect('/assets/images/default-avatar.webp');
+    }
+    
+    // If avatar is a base64 string, send it directly
+    if (profile.avatar.startsWith('data:')) {
+      // Extract the content type and base64 data
+      const matches = profile.avatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      
+      if (matches && matches.length === 3) {
+        const contentType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        res.set('Content-Type', contentType);
+        return res.send(buffer);
+      }
+    }
+    
+    // If avatar is a URL or path, redirect to it
+    if (profile.avatar.startsWith('http') || profile.avatar.startsWith('/')) {
+      return res.redirect(profile.avatar);
+    }
+    
+    // Fallback to default avatar
+    return res.redirect('/assets/images/default-avatar.webp');
+  } catch (err) {
+    console.error('Error serving avatar:', err);
+    res.redirect('/assets/images/default-avatar.webp');
+  }
+});
+
 module.exports = router;

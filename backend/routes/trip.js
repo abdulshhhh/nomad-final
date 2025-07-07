@@ -859,4 +859,72 @@ router.get('/statistics/:tripId', async (req, res) => {
   }
 });
 
+// Add this route to get trip details by ID
+router.get('/:tripId', async (req, res) => {
+  try {
+    const tripId = req.params.tripId;
+    console.log(`Fetching trip details for ID: ${tripId}`);
+    
+    // Find the trip by ID
+    const trip = await Trip.findById(tripId)
+      .populate('createdBy', 'fullName email avatar')
+      .exec();
+    
+    if (!trip) {
+      console.log(`Trip with ID ${tripId} not found`);
+      return res.status(404).json({
+        success: false,
+        error: 'Trip not found'
+      });
+    }
+    
+    // Find participants who have joined this trip
+    const joinedTrips = await JoinedTrip.find({ tripId: tripId })
+      .populate('userId', 'fullName email avatar')
+      .exec();
+    
+    // Extract participant information
+    const participants = joinedTrips.map(joinedTrip => ({
+      id: joinedTrip.userId._id,
+      name: joinedTrip.userId.fullName,
+      email: joinedTrip.userId.email,
+      avatar: joinedTrip.userId.avatar || "/assets/images/default-avatar.webp",
+      joinedAt: joinedTrip.joinedAt
+    }));
+    
+    // Format the response
+    const tripDetails = {
+      id: trip._id,
+      destination: trip.destination,
+      departure: trip.departure,
+      fromDate: trip.fromDate,
+      toDate: trip.toDate,
+      description: trip.description,
+      coverImage: trip.coverImage,
+      budget: trip.budget,
+      transport: trip.transport,
+      category: trip.category,
+      maxPeople: trip.maxPeople,
+      createdAt: trip.createdAt,
+      organizer: trip.createdBy.fullName,
+      organizerId: trip.createdBy._id,
+      organizerEmail: trip.createdBy.email,
+      organizerAvatar: trip.createdBy.avatar || "/assets/images/default-avatar.webp",
+      joinedMembers: participants
+    };
+    
+    res.json({
+      success: true,
+      trip: tripDetails
+    });
+  } catch (error) {
+    console.error('Error fetching trip details:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch trip details',
+      details: error.message
+    });
+  }
+});
+
 module.exports = { router, setSocketIO };

@@ -99,4 +99,30 @@ router.get('/profiles', async (req, res) => {
   }
 });
 
+// Add this route to serve user avatars
+router.get('/:userId/avatar', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await User.findById(userId);
+    
+    if (user && user.avatar) {
+      // If avatar is a full URL, redirect to it
+      if (user.avatar.startsWith('http')) {
+        return res.redirect(user.avatar);
+      }
+      
+      // If avatar is a base64 string, send it directly
+      if (user.avatar.startsWith('data:')) {
+        return res.send(user.avatar);
+      }
+    }
+    
+    // If no avatar or user found, return default avatar
+    res.redirect('/assets/images/default-avatar.webp');
+  } catch (error) {
+    console.error('Error serving user avatar:', error);
+    res.redirect('/assets/images/default-avatar.webp');
+  }
+});
+
 module.exports = router;

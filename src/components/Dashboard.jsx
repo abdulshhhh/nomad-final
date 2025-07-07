@@ -1130,54 +1130,164 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       setLoadingTripDetails(true);
       
       // Use BACKEND_URL for consistency
-      const response = await axios.get(`${BACKEND_URL}/api/trips/${tripId}`);
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      
+      // Try different possible API endpoints
+      const possibleEndpoints = [
+        `/api/trips/${tripId}`,
+        `/api/trips/details/${tripId}`,
+        `/api/trip/${tripId}`
+      ];
+      
+      let response = null;
+      let errorMessage = '';
+      
+      // Try each endpoint until one works
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${BACKEND_URL}${endpoint}`);
+          response = await axios.get(`${BACKEND_URL}${endpoint}`);
+          console.log(`Success with endpoint: ${endpoint}`);
+          break; // Exit loop if successful
+        } catch (err) {
+          console.log(`Endpoint ${endpoint} failed:`, err.message);
+          errorMessage = err.message;
+          // Continue to next endpoint
+        }
+      }
+      
+      // If all endpoints failed
+      if (!response) {
+        throw new Error(`All API endpoints failed. Last error: ${errorMessage}`);
+      }
+      
+      // Log the response for debugging
+      console.log('Trip details response:', response.data);
       
       if (response.data.success) {
         console.log('✅ Trip details fetched:', response.data);
         
-        // Extract members from the response
-        const organizer = response.data.trip.organizer ? {
+        // Fetch complete organizer profile
+        let organizerProfile = null;
+        if (response.data.trip.organizerId) {
+          organizerProfile = await fetchCompleteProfileData(response.data.trip.organizerId);
+          console.log('Organizer profile fetched:', organizerProfile);
+        }
+        
+        // Create organizer object with complete profile data
+        const organizer = organizerProfile ? {
+          id: organizerProfile.id || organizerProfile._id || response.data.trip.organizerId,
+          name: organizerProfile.fullName || organizerProfile.name || response.data.trip.organizer,
+          avatar: organizerProfile.avatar || `${BACKEND_URL}/api/users/${response.data.trip.organizerId}/avatar`,
+          role: 'organizer'
+        } : {
           id: response.data.trip.organizerId,
           name: response.data.trip.organizer,
-          avatar: response.data.trip.organizerAvatar,
+          avatar: response.data.trip.organizerAvatar || `${BACKEND_URL}/api/users/${response.data.trip.organizerId}/avatar`,
           role: 'organizer'
-        } : null;
+        };
         
-        const members = response.data.trip.joinedMembers || [];
+        // Fetch complete profiles for joined members
+        const joinedMembersPromises = Array.isArray(response.data.trip.joinedMembers) 
+          ? response.data.trip.joinedMembers.map(async member => {
+              const memberId = member.id || member._id;
+              if (!memberId) return member;
+              
+              const memberProfile = await fetchCompleteProfileData(memberId);
+              
+              return memberProfile ? {
+                ...member,
+                ...memberProfile,
+                id: memberId,
+                name: memberProfile.fullName || memberProfile.name || member.name,
+                avatar: memberProfile.avatar || `${BACKEND_URL}/api/users/${memberId}/avatar`,
+                role: 'member'
+              } : {
+                ...member,
+                role: 'member',
+                avatar: member.avatar || `${BACKEND_URL}/api/users/${memberId}/avatar`
+              };
+            })
+          : [];
+        
+        const joinedMembers = await Promise.all(joinedMembersPromises);
         
         // Combine organizer and members
-        const allMembers = organizer ? [organizer, ...members] : members;
-        
-        console.log('🔍 Fetching profiles for all members:', allMembers);
-        
-        // Fetch enhanced profiles for all members
-        const enhancedMembers = await fetchMemberProfiles(allMembers);
-        
-        // Separate organizer and members again
-        const enhancedOrganizer = enhancedMembers.find(m => m.role === 'organizer');
-        const enhancedJoinedMembers = enhancedMembers.filter(m => m.role !== 'organizer');
+        const allMembers = [organizer, ...joinedMembers];
         
         // Update trip with enhanced member data
         const updatedTrip = {
           ...selectedTrip,
           ...response.data.trip,
-          organizer: enhancedOrganizer?.name || response.data.trip.organizer,
-          organizerAvatar: enhancedOrganizer?.avatar || response.data.trip.organizerAvatar,
-          organizerId: enhancedOrganizer?.id || response.data.trip.organizerId,
-          joinedMembers: enhancedJoinedMembers
+          organizer: organizer.name,
+          organizerAvatar: organizer.avatar,
+          organizerId: organizer.id,
+          joinedMembers: joinedMembers
         };
         
         console.log('🔄 Updating selectedTrip with fetched details:', updatedTrip);
         setSelectedTrip(updatedTrip);
         
         // Set trip members for display
-        setTripMembers(enhancedMembers);
+        setTripMembers(allMembers);
         
         // Log the trip members to help debug
-        console.log('👥 Trip members set:', enhancedMembers);
+        console.log('👥 Trip members set:', allMembers);
       }
     } catch (error) {
       console.error('❌ Error fetching trip details:', error);
+      
+      // Handle the error gracefully
+      setLoadingTripDetails(false);
+      
+      // Continue with what data we have
+      if (selectedTrip) {
+        // Try to fetch organizer profile directly
+        try {
+          const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+          const organizerId = selectedTrip.organizerId;
+          
+          if (organizerId) {
+            const organizerProfile = await fetchCompleteProfileData(organizerId);
+            
+            if (organizerProfile) {
+              const organizer = {
+                id: organizerId,
+                name: organizerProfile.fullName || organizerProfile.name || selectedTrip.organizer,
+                avatar: organizerProfile.avatar || `${BACKEND_URL}/api/users/${organizerId}/avatar`,
+                role: 'organizer'
+              };
+              
+              setTripMembers([
+                organizer,
+                ...(selectedTrip.joinedMembers || []).map(member => ({
+                  ...member,
+                  role: 'member',
+                  avatar: member.avatar || "/assets/images/default-avatar.webp"
+                }))
+              ]);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch organizer profile directly:', err);
+        }
+        
+        // Fallback to basic info
+        setTripMembers([
+          {
+            id: selectedTrip.organizerId || "unknown",
+            name: selectedTrip.organizer || "Trip Organizer",
+            role: 'organizer',
+            avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp"
+          },
+          ...(selectedTrip.joinedMembers || []).map(member => ({
+            ...member,
+            role: 'member',
+            avatar: member.avatar || "/assets/images/default-avatar.webp"
+          }))
+        ]);
+      }
     } finally {
       setLoadingTripDetails(false);
     }
@@ -1833,43 +1943,166 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     }
   };
 
-  // Enhanced getAvatarUrl function with better logging and URL handling
+  // Improved getAvatarUrl function with better error handling and backend URL
   const getAvatarUrl = (member) => {
     if (!member) {
-      console.log('getAvatarUrl: No member provided, using default avatar');
+      console.log('No member provided, using default avatar');
       return "/assets/images/default-avatar.webp";
     }
     
-    // Log the member object to see what we're working with
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const memberId = member.id || member._id;
+    
+    // Log the member object to debug
     console.log(`getAvatarUrl for member:`, {
-      id: member.id || member._id,
+      id: memberId,
       name: member.name,
       avatarValue: member.avatar
     });
     
-    // Check if avatar is a base64 string
-    if (member.avatar && member.avatar.startsWith('data:')) {
-      console.log('getAvatarUrl: Using base64 avatar');
-      return member.avatar;
-    }
-    
-    // Check if avatar is an absolute URL
-    if (member.avatar && (member.avatar.startsWith('http://') || member.avatar.startsWith('https://'))) {
-      console.log('getAvatarUrl: Using absolute URL avatar:', member.avatar);
-      return member.avatar;
-    }
-    
-    // Check if avatar is a relative path
+    // STRATEGY 1: Check if avatar is a base64 string or absolute URL
     if (member.avatar) {
-      // Ensure the path starts with a slash
-      const formattedPath = member.avatar.startsWith('/') ? member.avatar : `/${member.avatar}`;
-      console.log('getAvatarUrl: Using relative path avatar:', formattedPath);
-      return formattedPath;
+      if (member.avatar.startsWith('data:') || member.avatar.startsWith('http')) {
+        console.log('Using provided avatar URL:', member.avatar);
+        return member.avatar;
+      }
+    }
+    
+    // STRATEGY 2: Direct API endpoint for user avatar
+    if (memberId) {
+      const directUrl = `${BACKEND_URL}/api/users/${memberId}/avatar`;
+      console.log('Using direct API endpoint for avatar:', directUrl);
+      return directUrl;
     }
     
     // Fallback to default
-    console.log('getAvatarUrl: No valid avatar found, using default');
+    console.log('No valid avatar source found, using default');
     return "/assets/images/default-avatar.webp";
+  }
+
+  // Add this helper function near your other utility functions in Dashboard.jsx
+  const getReliableAvatarUrl = (user) => {
+    if (!user) return "/assets/images/default-avatar.webp";
+    
+    const userId = user.id || user._id;
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    
+    // If user has an avatar property that's a valid URL, use it
+    if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:'))) {
+      return user.avatar;
+    }
+    
+    // If we have a userId, construct a reliable URL to the backend avatar endpoint
+    if (userId) {
+      return `${BACKEND_URL}/api/users/${userId}/avatar`;
+    }
+    
+    // Fallback to default avatar
+    return "/assets/images/default-avatar.webp";
+  };
+
+  // Add this function to fetch complete profile data including avatar
+  const fetchCompleteProfileData = async (userId) => {
+    if (!userId) {
+      console.warn('No userId provided to fetchCompleteProfileData');
+      return null;
+    }
+    
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    console.log(`Fetching complete profile for user ID: ${userId}`);
+    
+    try {
+      // Try to get profile data first (more detailed)
+      try {
+        console.log(`Trying profile endpoint: ${BACKEND_URL}/api/profile/${userId}`);
+        const profileResponse = await axios.get(
+          `${BACKEND_URL}/api/profile/${userId}`,
+          { 
+            headers,
+            timeout: 5000 // Add timeout to avoid hanging requests
+          }
+        );
+        
+        console.log('Profile response:', profileResponse.data);
+        
+        if (profileResponse.data && profileResponse.data.success) {
+          // Process avatar URL
+          let avatarUrl = profileResponse.data.profile.avatar;
+          
+          // If avatar is not a data URL or absolute URL, ensure it has the correct path
+          if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+            // If it doesn't start with a slash, add one
+            if (!avatarUrl.startsWith('/')) {
+              avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+            } else {
+              avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+            }
+          }
+          
+          // If no avatar, try to get it directly
+          if (!avatarUrl) {
+            avatarUrl = `${BACKEND_URL}/api/users/${userId}/avatar`;
+          }
+          
+          return {
+            ...profileResponse.data.profile,
+            avatar: avatarUrl
+          };
+        }
+      } catch (profileErr) {
+        console.log("Profile fetch failed:", profileErr.message);
+      }
+      
+      // Fallback to user endpoint
+      console.log(`Trying user endpoint: ${BACKEND_URL}/api/auth/users/${userId}`);
+      const userResponse = await axios.get(
+        `${BACKEND_URL}/api/auth/users/${userId}`,
+        { 
+          headers,
+          timeout: 5000
+        }
+      );
+      
+      console.log('User response:', userResponse.data);
+      
+      if (userResponse.data && userResponse.data.success) {
+        // Process avatar URL
+        let avatarUrl = userResponse.data.user.avatar;
+        
+        // If avatar is not a data URL or absolute URL, ensure it has the correct path
+        if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+          // If it doesn't start with a slash, add one
+          if (!avatarUrl.startsWith('/')) {
+            avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+          } else {
+            avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+          }
+        }
+        
+        // If no avatar, try to get it directly
+        if (!avatarUrl) {
+          avatarUrl = `${BACKEND_URL}/api/users/${userId}/avatar`;
+        }
+        
+        return {
+          ...userResponse.data.user,
+          avatar: avatarUrl
+        };
+      }
+    } catch (err) {
+      console.error("Error fetching user details:", err.message);
+      
+      // Return a minimal profile with direct avatar URL as fallback
+      return {
+        id: userId,
+        avatar: `${BACKEND_URL}/api/users/${userId}/avatar`
+      };
+    }
+    
+    return null;
   };
 
   return (
@@ -2897,36 +3130,28 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                         <>
                           {/* Organizer */}
                           {tripMembers.filter(member => member.role === 'organizer').map((organizer) => (
-                            <div key={organizer.id} className="mb-4">
+                            <div key={organizer.id || 'organizer'} className="mb-4">
                               <p className="text-[#5E5854] mb-2 text-sm">
                                 Organizer:
                               </p>
                               <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
                                 <img
-                                  src={getAvatarUrl(organizer)}
-                                  alt={organizer.name}
+                                  src={organizer.avatar || "/assets/images/default-avatar.webp"}
+                                  alt={organizer.name || "Trip Organizer"}
                                   className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                                   onClick={() => handleViewMemberProfile(organizer)}
                                   onError={(e) => {
-                                    console.log("Avatar load error for organizer:", {
-                                      name: organizer.name,
-                                      failedSrc: e.target.src,
-                                      avatarProp: organizer.avatar
-                                    });
+                                    console.log("Avatar load failed, trying direct API endpoint");
+                                    e.target.onerror = null; // Prevent infinite loop
                                     
-                                    // Try a different approach if the first one fails
-                                    if (!e.target.src.includes("default-avatar")) {
-                                      e.target.onerror = null; // Prevent infinite error loop
-                                      
-                                      // Try with BACKEND_URL if it's a relative path
-                                      if (organizer.avatar && !organizer.avatar.startsWith('/') && 
-                                          !organizer.avatar.startsWith('http') && !organizer.avatar.startsWith('data:')) {
-                                        console.log("Trying with BACKEND_URL:", `${BACKEND_URL}/${organizer.avatar}`);
-                                        e.target.src = `${BACKEND_URL}/${organizer.avatar}`;
-                                      } else {
-                                        console.log("Falling back to default avatar");
-                                        e.target.src = "/assets/images/default-avatar.webp";
-                                      }
+                                    // Try direct API endpoint as fallback
+                                    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+                                    const organizerId = organizer.id || organizer._id;
+                                    
+                                    if (organizerId) {
+                                      e.target.src = `${BACKEND_URL}/api/users/${organizerId}/avatar`;
+                                    } else {
+                                      e.target.src = "/assets/images/default-avatar.webp";
                                     }
                                   }}
                                 />
@@ -2934,7 +3159,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                   <div className="flex items-center space-x-2">
                                     <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
                                         onClick={() => handleViewMemberProfile(organizer)}>
-                                      {organizer.name}
+                                      {organizer.name || "Trip Organizer"}
                                     </h5>
                                   </div>
                                   <p className="text-xs text-[#5E5854]">Trip Creator</p>
@@ -2958,31 +3183,14 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                     className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
                                   >
                                     <img
-                                      src={getAvatarUrl(member)}
-                                      alt={member.name}
+                                      src={getReliableAvatarUrl(member)}
+                                      alt={member.name || "Member"}
                                       className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                                       onClick={() => handleViewMemberProfile(member)}
                                       onError={(e) => {
-                                        console.log("Avatar load error for member:", {
-                                          name: member.name,
-                                          failedSrc: e.target.src,
-                                          avatarProp: member.avatar
-                                        });
-                                        
-                                        // Try a different approach if the first one fails
-                                        if (!e.target.src.includes("default-avatar")) {
-                                          e.target.onerror = null; // Prevent infinite error loop
-                                      
-                                          // Try with BACKEND_URL if it's a relative path
-                                          if (member.avatar && !member.avatar.startsWith('/') && 
-                                              !member.avatar.startsWith('http') && !member.avatar.startsWith('data:')) {
-                                            console.log("Trying with BACKEND_URL:", `${BACKEND_URL}/${member.avatar}`);
-                                            e.target.src = `${BACKEND_URL}/${member.avatar}`;
-                                          } else {
-                                            console.log("Falling back to default avatar");
-                                            e.target.src = "/assets/images/default-avatar.webp";
-                                          }
-                                        }
+                                        console.log("Avatar load failed, using default");
+                                        e.target.onerror = null; // Prevent infinite loop
+                                        e.target.src = "/assets/images/default-avatar.webp";
                                       }}
                                     />
                                     <div className="flex-1">
@@ -3013,35 +3221,47 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                         </>
                       ) : (
                         <>
-                          {/* Fallback to static data */}
-                          <div className="mb-4">
-                            <p className="text-[#5E5854] mb-2 text-sm">
-                              Organizer:
-                            </p>
-                            <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
-                              <img
-                                src={selectedTrip.organizerAvatar || "/assets/images/default-avatar.jpg"}
-                                alt={selectedTrip.organizer || "Trip Organizer"}
-                                className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                onClick={() =>
-                                  handleViewMemberProfile({
-                                    id: selectedTrip.organizerId || "organizer_id",
-                                    name: selectedTrip.organizer || "Trip Organizer",
-                                    avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.jpg",
-                                    role: "organizer",
-                                  })
-                                }
-                              />
-                              <div>
-                                <h5 className="font-medium text-[#2c5e4a]">
-                                  {selectedTrip.organizer || "Trip Organizer"}
-                                </h5>
-                                <p className="text-xs text-[#5E5854]">
-                                  Trip Organizer
-                                </p>
+                          {/* Fallback when no trip members are available */}
+                          {tripMembers.length === 0 && !loadingTripDetails && (
+                            <div className="mb-4">
+                              <p className="text-[#5E5854] mb-2 text-sm">
+                                Organizer:
+                              </p>
+                              <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
+                                <img
+                                  src={selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp"}
+                                  alt={selectedTrip.organizer || "Trip Organizer"}
+                                  className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
+                                  onClick={() =>
+                                    handleViewMemberProfile({
+                                      id: selectedTrip.organizerId || "organizer_id",
+                                      name: selectedTrip.organizer || "Trip Organizer",
+                                      avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp",
+                                      role: "organizer",
+                                    })
+                                  }
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "/assets/images/default-avatar.webp";
+                                  }}
+                                />
+                                <div>
+                                  <h5 className="font-medium text-[#2c5e4a] cursor-pointer"
+                                      onClick={() =>
+                                        handleViewMemberProfile({
+                                          id: selectedTrip.organizerId || "organizer_id",
+                                          name: selectedTrip.organizer || "Trip Organizer",
+                                          avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp",
+                                          role: "organizer",
+                                        })
+                                      }>
+                                    {selectedTrip.organizer || "Trip Organizer"}
+                                  </h5>
+                                  <p className="text-xs text-[#5E5854]">Trip Creator</p>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
 
                           <div>
                             <p className="text-[#5E5854] mb-2 text-sm">
