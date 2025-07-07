@@ -1819,7 +1819,30 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     }
   }, [effectiveUser]);
 
-
+  // Add this function near your other useEffect hooks
+  useEffect(() => {
+    // Handle anchor links when the component mounts
+    const handleAnchorLinks = () => {
+      // Check if URL has a hash
+      if (window.location.hash) {
+        const id = window.location.hash.substring(1);
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    };
+    
+    // Run once when component mounts
+    handleAnchorLinks();
+    
+    // Also listen for hashchange events
+    window.addEventListener('hashchange', handleAnchorLinks);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleAnchorLinks);
+    };
+  }, []);
 
   useEffect(() => {
     const userIdForAPI = effectiveUser._id || effectiveUser.id;
@@ -2499,6 +2522,14 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 )}
               </div>
             </div>
+          </section>
+
+          {/* Trips Section */}
+          <section id="trips" className="space-y-6 scroll-mt-24">
+            <h3 className="text-2xl font-bold text-[#2c5e4a]">
+              Discover Trips
+            </h3>
+            {/* Rest of your trips section */}
           </section>
 
           {/* My Trips Section */}
@@ -4536,7 +4567,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                     href="#trips"
                     className="hover:text-[#f8d56b] transition-colors"
                   >
-                    Available Trips
+                    Discover Trips
                   </a>
                 </li>
                 <li>
