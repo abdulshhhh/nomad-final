@@ -50,16 +50,23 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
     };
   }, []);
 
-  // 🎯 GET BADGE BASED ON RANK AND STATS
-  const getBadge = (user) => {
-    if (user.rank === 1) return { title: "👑 Champion", color: "text-yellow-500" };
-    if (user.rank === 2) return { title: "🥈 Elite", color: "text-gray-400" };
-    if (user.rank === 3) return { title: "🥉 Master", color: "text-orange-500" };
-    if (user.coins >= 200) return { title: "💎 Diamond", color: "text-blue-500" };
-    if (user.coins >= 100) return { title: "🔥 Gold", color: "text-yellow-600" };
-    if (user.coins >= 50) return { title: "⭐ Silver", color: "text-gray-500" };
-    if (user.totalTrips >= 5) return { title: "🌟 Explorer", color: "text-green-500" };
-    return { title: "🚀 Rising Star", color: "text-purple-500" };
+  // 🏅 GET NOMADNOVA TITLE BASED ON TOTAL TRIPS
+  const getNomadNovaTitle = (user) => {
+    const trips = user.totalTrips || 0;
+
+    if (trips >= 150) return { title: "🏆 NomadNova Elite", color: "text-purple-600", bgColor: "from-purple-500 to-purple-700" };
+    if (trips >= 100) return { title: "👑 NomadNova", color: "text-yellow-500", bgColor: "from-yellow-400 to-yellow-600" };
+    if (trips >= 85) return { title: "🌍 Realm Roamer", color: "text-indigo-500", bgColor: "from-indigo-400 to-indigo-600" };
+    if (trips >= 75) return { title: "🚀 Sky Conqueror", color: "text-blue-500", bgColor: "from-blue-400 to-blue-600" };
+    if (trips >= 50) return { title: "🌟 Globe Guru", color: "text-green-500", bgColor: "from-green-400 to-green-600" };
+    if (trips >= 45) return { title: "🔥 Border Breaker", color: "text-red-500", bgColor: "from-red-400 to-red-600" };
+    if (trips >= 35) return { title: "✈️ Continental Hopper", color: "text-orange-500", bgColor: "from-orange-400 to-orange-600" };
+    if (trips >= 20) return { title: "🛩️ Jetsetter Junior", color: "text-cyan-500", bgColor: "from-cyan-400 to-cyan-600" };
+    if (trips >= 15) return { title: "🗺️ Route Rookie", color: "text-teal-500", bgColor: "from-teal-400 to-teal-600" };
+    if (trips >= 10) return { title: "🏙️ City Sampler", color: "text-pink-500", bgColor: "from-pink-400 to-pink-600" };
+    if (trips >= 5) return { title: "📍 Map Marker", color: "text-emerald-500", bgColor: "from-emerald-400 to-emerald-600" };
+
+    return { title: "🌱 New Traveler", color: "text-gray-500", bgColor: "from-gray-400 to-gray-600" };
   };
 
   //   GET RANK ICON
@@ -224,7 +231,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                         <GiCoinsPile className="text-gray-500 text-lg" />
                         <span className="text-gray-700 font-bold text-sm">{leaderboardData[1]?.coins}</span>
                       </div>
-                      <div className="text-xs text-[#5E5854] font-medium">Silver Champion</div>
+                      <div className="text-xs text-[#5E5854] font-medium">{getNomadNovaTitle(leaderboardData[1]).title}</div>
                     </div>
                   </div>
 
@@ -280,7 +287,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                         <GiCoinsPile className="text-yellow-500 text-xl" />
                         <span className="text-yellow-700 font-bold text-lg">{leaderboardData[0]?.coins}</span>
                       </div>
-                      <div className="text-sm text-yellow-600 font-bold">👑 Gold Champion</div>
+                      <div className="text-sm text-yellow-600 font-bold">{getNomadNovaTitle(leaderboardData[0]).title}</div>
                     </div>
                   </div>
 
@@ -333,7 +340,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                         <GiCoinsPile className="text-orange-500 text-lg" />
                         <span className="text-orange-700 font-bold text-sm">{leaderboardData[2]?.coins}</span>
                       </div>
-                      <div className="text-xs text-[#5E5854] font-medium">Bronze Champion</div>
+                      <div className="text-xs text-[#5E5854] font-medium">{getNomadNovaTitle(leaderboardData[2]).title}</div>
                     </div>
                   </div>
                 </div>
@@ -377,7 +384,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
               </div>
             ) : (
               leaderboardData.map((user) => {
-                const badge = getBadge(user);
+                const nomadTitle = getNomadNovaTitle(user);
                 const isCurrentUser = currentUser && (user.email === currentUser.email || user.id === currentUser.id);
 
                 return (
@@ -445,8 +452,13 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-xl font-bold text-[#2c5e4a] group-hover:text-[#f8a95d] transition-colors duration-300">{user.name}</h3>
-                          <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-lg border border-white/50 ${badge.color} bg-gradient-to-r from-[#f8d56b] to-[#f8a95d] text-white`}>
-                            {badge.title}
+                        </div>
+
+                        {/* 🏅 NOMADNOVA TITLE DISPLAY */}
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="text-lg">🏅</span>
+                          <span className={`text-sm font-bold px-4 py-2 rounded-full shadow-lg border border-white/50 bg-gradient-to-r ${nomadTitle.bgColor} text-white`}>
+                            {nomadTitle.title}
                           </span>
                         </div>
 

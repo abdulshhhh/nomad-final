@@ -1,8 +1,225 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export default function MemberProfiles({ trip, onStartChat }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [showMemberModal, setShowMemberModal] = useState(false);
+  const [memberProfiles, setMemberProfiles] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  // Fetch complete profile data for all members
+  useEffect(() => {
+    const fetchMemberProfiles = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('authToken');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const profilesMap = {};
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        
+        // Fetch organizer profile
+        if (trip.organizerId) {
+          try {
+            console.log(`Fetching organizer profile for ID: ${trip.organizerId}`);
+            
+            // Try the profile endpoint first
+            const response = await axios.get(`${BACKEND_URL}/api/profile/${trip.organizerId}`, { headers });
+            
+            if (response.data && response.data.success && response.data.profile) {
+              console.log("Organizer profile fetched successfully:", response.data.profile);
+              
+              // Process avatar URL
+              let avatarUrl = response.data.profile.avatar;
+              
+              // If avatar is not a data URL or absolute URL, ensure it has the correct path
+              if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+                // If it doesn't start with a slash, add one
+                if (!avatarUrl.startsWith('/')) {
+                  avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+                } else {
+                  avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+                }
+              }
+              
+              // If no avatar, try to get it directly
+              if (!avatarUrl) {
+                avatarUrl = `${BACKEND_URL}/api/users/${trip.organizerId}/avatar`;
+              }
+              
+              profilesMap[trip.organizerId] = {
+                ...response.data.profile,
+                avatar: avatarUrl
+              };
+            }
+          } catch (err) {
+            console.error("Failed to fetch organizer profile:", err);
+            
+            // Fallback: Try to get avatar directly
+            profilesMap[trip.organizerId] = {
+              fullName: trip.organizer,
+              name: trip.organizer,
+              avatar: `${BACKEND_URL}/api/users/${trip.organizerId}/avatar`
+            };
+          }
+        }
+        
+        // Fetch member profiles
+        if (trip.joinedMembers && trip.joinedMembers.length > 0) {
+          const fetchPromises = trip.joinedMembers.map(member => {
+            const memberId = member.id || member._id;
+            if (!memberId) return Promise.resolve(null);
+            
+            console.log(`Fetching profile for member ID: ${memberId}`);
+            
+            // Try the profile endpoint first
+            return axios.get(`${BACKEND_URL}/api/profile/${memberId}`, { headers })
+              .then(response => {
+                if (response.data && response.data.success && response.data.profile) {
+                  console.log(`Profile fetched successfully for member ${memberId}:`, response.data.profile);
+                  
+                  // Process avatar URL
+                  let avatarUrl = response.data.profile.avatar;
+                  
+                  // If avatar is not a data URL or absolute URL, ensure it has the correct path
+                  if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+                    // If it doesn't start with a slash, add one
+                    if (!avatarUrl.startsWith('/')) {
+                      avatarUrl = `${BACKEND_URL}/${avatarUrl}`;
+                    } else {
+                      avatarUrl = `${BACKEND_URL}${avatarUrl}`;
+                    }
+                  }
+                  
+                  // If no avatar, try to get it directly
+                  if (!avatarUrl) {
+                    avatarUrl = `${BACKEND_URL}/api/users/${memberId}/avatar`;
+                  }
+                  
+                  return { 
+                    id: memberId, 
+                    profile: {
+                      ...response.data.profile,
+                      avatar: avatarUrl
+                    }
+                  };
+                }
+                return null;
+              })
+              .catch(err => {
+                console.error(`Failed to fetch profile for member ${memberId}:`, err);
+                
+                // Fallback: Try to get avatar directly
+                return { 
+                  id: memberId, 
+                  profile: {
+                    fullName: member.name,
+                    name: member.name,
+                    avatar: `${BACKEND_URL}/api/users/${memberId}/avatar`
+                  }
+                };
+              });
+          });
+          
+          const results = await Promise.all(fetchPromises);
+          results.forEach(result => {
+            if (result && result.id && result.profile) {
+              profilesMap[result.id] = result.profile;
+            }
+          });
+        }
+        
+        console.log("All profiles fetched:", profilesMap);
+        setMemberProfiles(profilesMap);
+      } catch (error) {
+        console.error("Error fetching member profiles:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchMemberProfiles();
+  }, [trip]);
+
+  // Get profile data with fallback
+  const getMemberProfile = (member) => {
+    const memberId = member.id || member._id;
+    if (memberId && memberProfiles[memberId]) {
+      return {
+        ...member,
+        ...memberProfiles[memberId],
+        // Ensure these fields are always available
+        name: memberProfiles[memberId].fullName || memberProfiles[memberId].name || member.name,
+        avatar: memberProfiles[memberId].avatar || member.avatar
+      };
+    }
+    return member;
+  };
+
+  // Completely revised getAvatarUrl function with multiple fallback strategies
+  const getAvatarUrl = (member) => {
+    if (!member) {
+      console.log('MemberProfiles: No member provided, using default avatar');
+      return "/assets/images/default-avatar.webp";
+    }
+    
+    // Log the member object to debug
+    console.log(`MemberProfiles: getAvatarUrl for member:`, {
+      id: member.id || member._id,
+      name: member.name,
+      avatarValue: member.avatar
+    });
+    
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    
+    // STRATEGY 1: Check if avatar is a base64 string
+    if (member.avatar && member.avatar.startsWith('data:')) {
+      console.log('MemberProfiles: Using base64 avatar');
+      return member.avatar;
+    }
+    
+    // STRATEGY 2: Check if avatar is an absolute URL
+    if (member.avatar && (member.avatar.startsWith('http://') || member.avatar.startsWith('https://'))) {
+      console.log('MemberProfiles: Using absolute URL avatar:', member.avatar);
+      return member.avatar;
+    }
+    
+    // STRATEGY 3: Try to construct a full URL with the backend URL
+    if (member.avatar) {
+      // If it doesn't start with a slash, add the backend URL
+      if (!member.avatar.startsWith('/')) {
+        const fullUrl = `${BACKEND_URL}/${member.avatar}`;
+        console.log('MemberProfiles: Using backend URL + relative path:', fullUrl);
+        return fullUrl;
+      }
+      
+      // If it starts with a slash, try both with and without the backend URL
+      const fullUrl = `${BACKEND_URL}${member.avatar}`;
+      console.log('MemberProfiles: Using backend URL + path with leading slash:', fullUrl);
+      return fullUrl;
+    }
+    
+    // STRATEGY 4: Try to use the profilePicture field if available
+    if (member.profilePicture) {
+      if (member.profilePicture.startsWith('http://') || member.profilePicture.startsWith('https://')) {
+        console.log('MemberProfiles: Using profilePicture absolute URL:', member.profilePicture);
+        return member.profilePicture;
+      }
+      
+      if (!member.profilePicture.startsWith('/')) {
+        const fullUrl = `${BACKEND_URL}/${member.profilePicture}`;
+        console.log('MemberProfiles: Using backend URL + profilePicture:', fullUrl);
+        return fullUrl;
+      }
+      
+      const fullUrl = `${BACKEND_URL}${member.profilePicture}`;
+      console.log('MemberProfiles: Using backend URL + profilePicture with leading slash:', fullUrl);
+      return fullUrl;
+    }
+    
+    // STRATEGY 5: Fallback to default
+    console.log('MemberProfiles: No valid avatar found, using default');
+    return "/assets/images/default-avatar.webp";
+  };
 
   const allMembers = [
     {
@@ -10,7 +227,7 @@ export default function MemberProfiles({ trip, onStartChat }) {
       name: trip.organizer,
       avatar: trip.organizerAvatar,
       role: 'organizer',
-      joinedDate: '2024-11-15', // Organizer created the trip
+      joinedDate: '2024-11-15',
       bio: 'Passionate traveler and adventure seeker. Love exploring new cultures and making memories!',
       interests: ['Photography', 'Hiking', 'Local Cuisine'],
       previousTrips: 12,
@@ -27,18 +244,32 @@ export default function MemberProfiles({ trip, onStartChat }) {
   ];
 
   const handleMemberClick = (member) => {
-    setSelectedMember(member);
+    // Use the enhanced profile data when available
+    setSelectedMember(getMemberProfile(member));
     setShowMemberModal(true);
   };
 
-  const formatJoinedDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] p-4 rounded-xl shadow-md mb-6">
+          <h2 className="text-xl font-bold text-[#f8d56b]">Trip Members</h2>
+          <p className="text-[#a8c4b8] text-sm">Loading member profiles...</p>
+        </div>
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={`skeleton-${i}`} className="bg-gradient-to-r from-[#6F93AD] to-[#4a708a] rounded-xl p-4 border-2 border-[#d1c7b7] animate-pulse">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-gray-300 mb-2"></div>
+                <div className="h-4 bg-gray-300 rounded w-20 mb-1"></div>
+                <div className="h-3 bg-gray-300 rounded w-16"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -52,16 +283,37 @@ export default function MemberProfiles({ trip, onStartChat }) {
       <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {allMembers.map((member) => (
           <div
-            key={member.id}
+            key={member.id || `member-${member.name}`}
             onClick={() => handleMemberClick(member)}
             className="bg-gradient-to-r from-[#6F93AD] to-[#4a708a] rounded-xl p-4 border-2 border-[#d1c7b7] hover:border-[#f8d56b] transition-all duration-300 cursor-pointer hover:scale-105 shadow-lg hover:shadow-xl"
           >
             <div className="text-center">
               <div className="relative inline-block">
                 <img
-                  src={member.avatar}
+                  src={getAvatarUrl(member)}
                   alt={member.name}
                   className="w-16 h-16 rounded-full object-cover border-3 border-[#f8d56b] mx-auto"
+                  onError={(e) => {
+                    console.error("Failed to load avatar:", e.target.src);
+                    
+                    // Try different strategies if the first one fails
+                    if (!e.target.src.includes("default-avatar")) {
+                      e.target.onerror = null; // Prevent infinite error loop
+                      
+                      // Try strategy 1: Direct backend URL
+                      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+                      const memberId = member.id || member._id;
+                      
+                      if (memberId) {
+                        console.log("Trying direct profile image URL:", `${BACKEND_URL}/api/users/${memberId}/avatar`);
+                        e.target.src = `${BACKEND_URL}/api/users/${memberId}/avatar`;
+                        return;
+                      }
+                      
+                      // If that fails, use the default avatar
+                      e.target.src = "/assets/images/default-avatar.webp";
+                    }
+                  }}
                 />
                 {member.role === 'organizer' && (
                   <div className="absolute -top-1 -right-1 bg-[#f87c6d] rounded-full p-1">
@@ -71,7 +323,9 @@ export default function MemberProfiles({ trip, onStartChat }) {
                   </div>
                 )}
               </div>
-              <h3 className="mt-2 font-bold text-white text-sm sm:text-base truncate">{member.name}</h3>
+              <h3 className="mt-2 font-bold text-white text-sm sm:text-base truncate">
+                {memberProfiles[member.id || member._id]?.fullName || member.name}
+              </h3>
               <p className="text-[#f8d56b] text-xs sm:text-sm capitalize">
                 {member.role === 'organizer' ? 'Trip Organizer' : 'Fellow Traveler'}
               </p>
@@ -84,115 +338,95 @@ export default function MemberProfiles({ trip, onStartChat }) {
       {showMemberModal && selectedMember && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-[#f8f4e3] to-[#f0d9b5] rounded-2xl p-4 sm:p-6 max-w-md w-full border-2 border-[#d1c7b7] shadow-2xl">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] -m-4 sm:-m-6 mb-4 sm:mb-6 p-4 sm:p-6 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-[#f8d56b] mb-2">Member Profile</h2>
-              <div className="flex justify-between items-start">
-                <div className="flex items-center space-x-3 sm:space-x-4">
-                  <div className="relative">
-                    <img
-                      src={selectedMember.avatar}
-                      alt={selectedMember.name}
-                      className="w-16 sm:w-20 h-16 sm:h-20 rounded-full object-cover border-3 border-[#f8d56b]"
-                    />
-                    {selectedMember.role === 'organizer' && (
-                      <div className="absolute -top-2 -right-2 bg-[#f87c6d] rounded-full p-1 sm:p-2">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-white">{selectedMember.name}</h3>
-                    <p className="text-[#a8c4b8] text-sm capitalize">
-                      {selectedMember.role === 'organizer' ? '👑 Trip Organizer' : '🎒 Fellow Traveler'}
-                    </p>
-                    <div className="flex items-center mt-1">
-                      <span className="text-[#f8d56b]">★</span>
-                      <span className="text-white font-medium ml-1">{selectedMember.rating}</span>
-                      <span className="text-[#a8c4b8] text-xs sm:text-sm ml-1">({selectedMember.previousTrips} trips)</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => setShowMemberModal(false)}
-                  className="text-white hover:text-[#f8d56b] text-2xl font-bold"
-                >
-                  ×
-                </button>
+            {/* Modal content */}
+            <div className="flex justify-end">
+              <button 
+                onClick={() => setShowMemberModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex items-center space-x-4 mb-4">
+              <img
+                src={getAvatarUrl(selectedMember)}
+                alt={selectedMember.name}
+                className="w-20 h-20 rounded-full object-cover border-3 border-[#f8d56b]"
+                onError={(e) => {
+                  console.error("Failed to load avatar in modal:", e.target.src);
+                  
+                  // Try different strategies if the first one fails
+                  if (!e.target.src.includes("default-avatar")) {
+                    e.target.onerror = null; // Prevent infinite error loop
+                    
+                    // Try strategy 1: Direct backend URL
+                    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+                    const memberId = selectedMember.id || selectedMember._id;
+                    
+                    if (memberId) {
+                      console.log("Trying direct profile image URL in modal:", `${BACKEND_URL}/api/users/${memberId}/avatar`);
+                      e.target.src = `${BACKEND_URL}/api/users/${memberId}/avatar`;
+                      return;
+                    }
+                    
+                    // If that fails, use the default avatar
+                    e.target.src = "/assets/images/default-avatar.webp";
+                  }
+                }}
+              />
+              <div>
+                <h3 className="text-xl font-bold text-[#2c5e4a]">
+                  {selectedMember.fullName || selectedMember.name}
+                </h3>
+                <p className="text-[#f87c6d] font-medium">
+                  {selectedMember.role === 'organizer' ? 'Trip Organizer' : 'Fellow Traveler'}
+                </p>
               </div>
             </div>
-
-            {/* Member Info */}
-            <div className="space-y-3 sm:space-y-4">
-              {/* Bio */}
-              <div className="bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] p-3 sm:p-4 rounded-xl border border-[#d1c7b7]">
-                <h4 className="font-bold text-[#f8d56b] mb-1 sm:mb-2">About</h4>
-                <p className="text-[#a8c4b8] text-xs sm:text-sm">{selectedMember.bio}</p>
-              </div>
-
-              {/* Interests */}
-              <div className="bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] p-3 sm:p-4 rounded-xl border border-[#d1c7b7]">
-                <h4 className="font-bold text-white mb-1 sm:mb-2">Interests</h4>
-                <div className="flex flex-wrap gap-1 sm:gap-2">
-                  {selectedMember.interests.map((interest, index) => (
-                    <span
-                      key={index}
-                      className="px-2 sm:px-3 py-1 bg-[#2c5e4a] text-[#f8d56b] rounded-full text-xs sm:text-sm font-medium"
+            
+            {/* Member details */}
+            <div className="space-y-3">
+              <p className="text-gray-700">{selectedMember.bio}</p>
+              
+              <div>
+                <h4 className="font-semibold text-[#2c5e4a]">Interests</h4>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedMember.interests?.map((interest, index) => (
+                    <span 
+                      key={`interest-${index}`}
+                      className="bg-[#6F93AD] text-white px-2 py-1 rounded-full text-xs"
                     >
                       {interest}
                     </span>
                   ))}
                 </div>
               </div>
-
-              {/* Trip Stats */}
-              <div className="bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] p-4 rounded-xl border border-[#d1c7b7]">
-                <h4 className="font-bold text-[#f8d56b] mb-2">Travel Stats</h4>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-[#f8a95d]">{selectedMember.previousTrips}</p>
-                    <p className="text-[#a8c4b8] text-sm">Trips Completed</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-[#f8a95d]">{selectedMember.rating}</p>
-                    <p className="text-[#a8c4b8] text-sm">Average Rating</p>
-                  </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white/50 p-2 rounded-lg">
+                  <p className="text-xs text-gray-500">Previous Trips</p>
+                  <p className="font-bold text-[#2c5e4a]">{selectedMember.previousTrips || 0}</p>
+                </div>
+                <div className="bg-white/50 p-2 rounded-lg">
+                  <p className="text-xs text-gray-500">Rating</p>
+                  <p className="font-bold text-[#2c5e4a]">{selectedMember.rating || "4.5"} ⭐</p>
                 </div>
               </div>
-
-              {/* Join Date */}
-              <div className="text-center">
-                <p className="text-[#5E5854] text-sm">
-                  {selectedMember.role === 'organizer' 
-                    ? `Created this trip on ${formatJoinedDate(selectedMember.joinedDate)}`
-                    : `Joined on ${formatJoinedDate(selectedMember.joinedDate)}`
-                  }
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-2 sm:space-x-3 mt-4 sm:mt-6">
-              <button
-                onClick={() => setShowMemberModal(false)}
-                className="flex-1 bg-[#5E5854] hover:bg-[#2c5e4a] text-white py-2 rounded-xl transition-colors font-semibold text-sm sm:text-base"
-              >
-                Close
-              </button>
-              {selectedMember.id !== 'current_user' && (
+              
+              <div className="pt-3 border-t border-gray-200">
                 <button
                   onClick={() => {
+                    onStartChat(selectedMember);
                     setShowMemberModal(false);
-                    onStartChat();
                   }}
-                  className="flex-1 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white py-2 rounded-xl transition-colors font-semibold text-sm sm:text-base"
+                  className="w-full bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] text-white py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
                 >
-                  Message
+                  Message {selectedMember.fullName || selectedMember.name}
                 </button>
-              )}
+              </div>
             </div>
           </div>
         </div>

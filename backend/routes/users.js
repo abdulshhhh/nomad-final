@@ -44,4 +44,59 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Add this route to fetch a single user's profile with avatar
+router.get('/:userId/profile', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    // Find user by ID
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Return user profile with avatar
+    return res.json({
+      _id: user._id,
+      name: user.name,
+      avatar: user.avatar,
+      // Add other non-sensitive profile fields
+      joinedDate: user.createdAt,
+      // Don't include sensitive information like email, password, etc.
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Add this route to fetch multiple user profiles at once
+router.get('/profiles', async (req, res) => {
+  try {
+    const userIds = req.query.userIds ? req.query.userIds.split(',') : [];
+    
+    if (!userIds.length) {
+      return res.status(400).json({ success: false, message: 'No user IDs provided' });
+    }
+    
+    // Find all users by IDs
+    const users = await User.find({ _id: { $in: userIds } });
+    
+    // Map to return only necessary profile data
+    const profiles = users.map(user => ({
+      _id: user._id,
+      name: user.name,
+      avatar: user.avatar,
+      joinedDate: user.createdAt,
+      // Add other non-sensitive fields as needed
+    }));
+    
+    return res.json(profiles);
+  } catch (error) {
+    console.error('Error fetching user profiles:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

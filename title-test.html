@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomadNova Title System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            color: #f8d56b;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .user-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #f8d56b;
+        }
+        button {
+            background: linear-gradient(45deg, #f8a95d, #f87c6d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        input, select {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        .title-badge {
+            background: linear-gradient(45deg, #f8d56b, #f8a95d);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .result {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏅 NomadNova Title System Test</h1>
+        
+        <div class="test-section">
+            <h2>📊 Current Users & Titles</h2>
+            <button onclick="fetchUsers()">Refresh User List</button>
+            <div id="usersList"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Test Title Updates</h2>
+            <div>
+                <select id="userSelect">
+                    <option value="">Select a user...</option>
+                </select>
+                <input type="number" id="tripCount" placeholder="New trip count" min="0" max="200">
+                <button onclick="updateUserTrips()">Update Trips & Title</button>
+            </div>
+            <div id="updateResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🏆 Title Hierarchy</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div class="title-badge">New Traveler (0-4 trips)</div>
+                <div class="title-badge">Map Marker (5 trips)</div>
+                <div class="title-badge">City Sampler (10 trips)</div>
+                <div class="title-badge">Route Rookie (15 trips)</div>
+                <div class="title-badge">Jetsetter Junior (20 trips)</div>
+                <div class="title-badge">Continental Hopper (35 trips)</div>
+                <div class="title-badge">Border Breaker (45 trips)</div>
+                <div class="title-badge">Globe Guru (50 trips)</div>
+                <div class="title-badge">Sky Conqueror (75 trips)</div>
+                <div class="title-badge">Realm Roamer (85 trips)</div>
+                <div class="title-badge">NomadNova (100 trips)</div>
+                <div class="title-badge">NomadNova Elite (150 trips)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let users = [];
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/leaderboard/leaderboard`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    users = data.leaderboard;
+                    displayUsers();
+                    populateUserSelect();
+                } else {
+                    document.getElementById('usersList').innerHTML = '<div class="error">Failed to fetch users</div>';
+                }
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayUsers() {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = users.map(user => `
+                <div class="user-card">
+                    <strong>${user.name}</strong><br>
+                    <span class="title-badge">${user.title || 'New Traveler'}</span><br>
+                    Total Trips: ${user.totalTrips || 0} | 
+                    Hosted: ${user.tripsHosted || 0} | 
+                    Joined: ${user.tripsJoined || 0}<br>
+                    Coins: ${user.coins || 0} | Level: ${user.level || 1}
+                </div>
+            `).join('');
+        }
+
+        function populateUserSelect() {
+            const select = document.getElementById('userSelect');
+            select.innerHTML = '<option value="">Select a user...</option>' + 
+                users.map(user => `<option value="${user._id}">${user.name}</option>`).join('');
+        }
+
+        async function updateUserTrips() {
+            const userId = document.getElementById('userSelect').value;
+            const totalTrips = parseInt(document.getElementById('tripCount').value);
+            const resultDiv = document.getElementById('updateResult');
+
+            if (!userId || isNaN(totalTrips)) {
+                resultDiv.innerHTML = '<div class="error">Please select a user and enter a valid trip count</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/leaderboard/test-update-trips`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId, totalTrips })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <strong>✅ ${data.message}</strong><br>
+                            Title Change: ${data.user.oldTitle} → ${data.user.newTitle}<br>
+                            ${data.user.titleChanged ? '🎉 Title Updated!' : '📝 Title Unchanged'}
+                        </div>
+                    `;
+                    // Refresh the user list
+                    fetchUsers();
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Load users on page load
+        fetchUsers();
+    </script>
+</body>
+</html>

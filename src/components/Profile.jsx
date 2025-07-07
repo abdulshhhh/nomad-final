@@ -208,8 +208,25 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
   const dataFetchedRef = useRef(false);
 
   // Add this function to handle avatar display
-  const getAvatarUrl = () => {
-    // Always return a default image to stop the blinking
+  const getAvatarUrl = (user) => {
+    if (!user) return "/assets/images/default-avatar.webp";
+    
+    // Check if avatar is a base64 string
+    if (user.avatar && (user.avatar.startsWith('data:image') || user.avatar.startsWith('http'))) {
+      return user.avatar;
+    }
+    
+    // Check if avatar is a relative path
+    if (user.avatar && !user.avatar.startsWith('/')) {
+      return `/${user.avatar}`;
+    }
+    
+    // Return the avatar if it's a valid path
+    if (user.avatar) {
+      return user.avatar;
+    }
+    
+    // Fallback to default
     return "/assets/images/default-avatar.webp";
   };
 
@@ -619,6 +636,15 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                   {/* Name and bio next to profile picture */}
                   <div>
                     <h2 className="text-base font-cinzel font-bold text-white mb-1">{profileData.fullName}</h2>
+
+                    {/* 🏅 NOMADNOVA TITLE DISPLAY */}
+                    <div className="flex items-center mb-2">
+                      <span className="text-yellow-400 text-sm mr-2">🏅</span>
+                      <span className="text-yellow-300 text-xs font-semibold bg-yellow-500/20 px-2 py-1 rounded-full border border-yellow-400/30">
+                        {profileData.title || 'New Traveler'}
+                      </span>
+                    </div>
+
                     <div className="flex items-center text-gray-200 text-xs mb-2">
                       <FiMapPin className="mr-1 w-3 h-3" />
                       <span>{profileData.location}</span>
