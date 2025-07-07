@@ -360,6 +360,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                               src={getReliableAvatarUrl(leaderboardData[1])}
                               alt={leaderboardData[1]?.name}
                               className="relative w-16 h-16 rounded-full border-3 border-gray-300 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-gray-300/70 transition-all duration-300"
+                              style={{ objectFit: 'cover', aspectRatio: '1/1' }}
                               onError={(e) => {
                                 e.target.onerror = null; // Prevent infinite loop
                                 e.target.src = "/assets/images/default-avatar.webp";
@@ -398,7 +399,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
 
                       {/* Enhanced Podium Base */}
                       <div className="relative flex flex-col items-center">
-                        <div className="w-20 h-24 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-xl shadow-2xl">
+                        <div className="w-16 h-20 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-xl shadow-2xl">
                           <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white/40 rounded-t-xl"></div>
                           <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
                             <FaCrown className="text-white text-lg drop-shadow-lg" />
@@ -409,20 +410,21 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                           <div className="absolute bottom-5 right-2 w-1 h-1 bg-white rounded-full animate-ping" style={{animationDelay: '1s'}}></div>
                         </div>
 
-                        {/* Enhanced Profile Picture */}
-                        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2">
-                          <div className="relative">
+                        {/* 1st Place - Enhanced Profile Picture Container */}
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
+                          <div className="relative w-16 h-16 rounded-full">
                             <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full blur-lg opacity-60 animate-pulse"></div>
                             <img
                               src={getReliableAvatarUrl(leaderboardData[0])}
                               alt={leaderboardData[0]?.name}
-                              className="relative w-20 h-20 rounded-full border-4 border-yellow-400 object-cover shadow-2xl ring-3 ring-white/50 group-hover:ring-yellow-400/70 transition-all duration-300"
+                              className="relative w-16 h-16 rounded-full border-3 border-yellow-400 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-yellow-400/70 transition-all duration-300"
+                              style={{ objectFit: 'cover', aspectRatio: '1/1' }}
                               onError={(e) => {
                                 e.target.onerror = null; // Prevent infinite loop
                                 e.target.src = "/assets/images/default-avatar.webp";
                               }}
                             />
-                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
                               <span className="text-white text-xs font-bold">L{leaderboardData[0]?.level || 1}</span>
                             </div>
                           </div>
@@ -442,7 +444,7 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
                     </div>
                   </div>
 
-                  {/* 3rd Place - Bronze */}
+                  {/* 3rd Place - Bronze - Updated to match 2nd place dimensions */}
                   <div className="group text-center transform hover:scale-105 transition-all duration-500 flex-shrink-0">
                     <div className="relative mb-4">
                       {/* Floating Crown Effect */}
@@ -454,29 +456,30 @@ export default function LeaderboardPage({ onClose, currentUser = {} }) {
 
                       {/* Enhanced Podium Base */}
                       <div className="relative flex flex-col items-center">
-                        <div className="w-14 h-16 bg-gradient-to-t from-orange-600 via-orange-500 to-orange-400 rounded-t-xl shadow-xl">
+                        <div className="w-16 h-20 bg-gradient-to-t from-orange-600 via-orange-500 to-orange-400 rounded-t-xl shadow-xl">
                           <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white/40 rounded-t-xl"></div>
                           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
-                            <div className="w-4 h-4 bg-white/30 rounded-full flex items-center justify-center">
+                            <div className="w-5 h-5 bg-white/30 rounded-full flex items-center justify-center">
                               <span className="text-white font-bold text-xs">3</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Enhanced Profile Picture */}
-                        <div className="absolute -top-7 left-1/2 transform -translate-x-1/2">
-                          <div className="relative">
+                        {/* 3rd Place - Enhanced Profile Picture Container */}
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
+                          <div className="relative w-16 h-16 rounded-full">
                             <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur-sm opacity-50 animate-pulse"></div>
                             <img
                               src={getReliableAvatarUrl(leaderboardData[2])}
                               alt={leaderboardData[2]?.name}
-                              className="relative w-14 h-14 rounded-full border-3 border-orange-400 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-orange-400/70 transition-all duration-300"
+                              className="relative w-16 h-16 rounded-full border-3 border-orange-400 object-cover shadow-xl ring-2 ring-white/50 group-hover:ring-orange-400/70 transition-all duration-300"
+                              style={{ objectFit: 'cover', aspectRatio: '1/1' }}
                               onError={(e) => {
                                 e.target.onerror = null; // Prevent infinite loop
                                 e.target.src = "/assets/images/default-avatar.webp";
                               }}
                             />
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
                               <span className="text-white text-xs font-bold">L{leaderboardData[2]?.level || 1}</span>
                             </div>
                           </div>
