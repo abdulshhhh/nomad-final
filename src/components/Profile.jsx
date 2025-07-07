@@ -391,7 +391,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
             photos: (response.data.memories || []).length,
             countries: countries.size,
             cities: cities.size,
-            trips: joinedTripsData.length // Use the joined trips data
+            trips: userStats.tripsHosted + userStats.tripsJoined // Use the sum instead of joinedTripsData.length
           }));
         } else {
           console.error("API returned success: false when fetching memories");
@@ -1056,7 +1056,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                           <div className="card-image" style={{backgroundImage: "url('/assets/images/london.jpeg')"}}></div>
                         </div>
                         <div className="card-label">Trips</div>
-                        <div className="card-count">{joinedTripsData.length}</div>
+                        <div className="card-count">{userStats.tripsHosted + userStats.tripsJoined}</div>
                         <div className="card-deck">
                           <div className="mini-card mini-card-1" style={{backgroundImage: "url('/assets/images/london.jpeg')"}}></div>
                           <div className="mini-card mini-card-2" style={{backgroundImage: "url('/assets/images/london.jpeg')"}}></div>
