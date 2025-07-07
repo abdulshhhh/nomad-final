@@ -53,6 +53,11 @@ const userSchema = new mongoose.Schema({
     lastActive: {
         type: Date,
         default: Date.now
+    },
+    // 🏅 NOMADNOVA TITLE SYSTEM
+    title: {
+        type: String,
+        default: 'New Traveler'
     }
 });
 
@@ -69,5 +74,28 @@ userSchema.virtual('levelProgress').get(function() {
     const total = coinsForNextLevel - coinsForCurrentLevel;
     return { progress, total, percentage: Math.round((progress / total) * 100) };
 });
+
+// 🏅 CALCULATE NOMADNOVA TITLE BASED ON TOTAL TRIPS
+userSchema.virtual('calculatedTitle').get(function() {
+    const trips = this.totalTrips || 0;
+
+    if (trips >= 150) return 'NomadNova Elite';
+    if (trips >= 100) return 'NomadNova';
+    if (trips >= 85) return 'Realm Roamer';
+    if (trips >= 75) return 'Sky Conqueror';
+    if (trips >= 50) return 'Globe Guru';
+    if (trips >= 45) return 'Border Breaker';
+    if (trips >= 35) return 'Continental Hopper';
+    if (trips >= 20) return 'Jetsetter Junior';
+    if (trips >= 15) return 'Route Rookie';
+    if (trips >= 10) return 'City Sampler';
+    if (trips >= 5) return 'Map Marker';
+
+    return 'New Traveler';
+});
+
+// Ensure virtuals are included when converting to JSON
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('User',userSchema);

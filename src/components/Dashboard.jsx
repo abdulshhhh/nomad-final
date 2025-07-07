@@ -922,25 +922,61 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   // --- VIEW MEMBER PROFILE HANDLER ---
   const handleViewMemberProfile = async (member) => {
     try {
+      // Fetch the complete profile if we don't have it already
+      let completeProfile = member;
+      
+      if (member.id || member._id) {
+        const token = localStorage.getItem('authToken');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        
+        try {
+          const response = await axios.get(`http://localhost:5000/api/profile/${member.id || member._id}`, { headers });
+          
+          if (response.data && response.data.success && response.data.profile) {
+            completeProfile = {
+              ...member,
+              ...response.data.profile,
+              // Ensure these fields are always available
+              name: response.data.profile.fullName || response.data.profile.name || member.name,
+              fullName: response.data.profile.fullName || response.data.profile.name || member.name,
+              avatar: response.data.profile.avatar || member.avatar
+            };
+          }
+        } catch (err) {
+          console.error(`Failed to fetch complete profile for member ${member.id || member._id}:`, err);
+        }
+      }
+      
+      // Ensure avatar URL is properly formatted
+      let avatarUrl = completeProfile.avatar;
+      
+      // If avatar is not a data URL or absolute URL, ensure it has the correct path
+      if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+        // If it doesn't start with a slash, add one
+        if (!avatarUrl.startsWith('/')) {
+          avatarUrl = `/${avatarUrl}`;
+        }
+      }
+      
       // Format the member data with all required properties
       const formattedMember = {
-        id: member.id || member._id,
-        name: member.name || member.fullName,
-        fullName: member.fullName || member.name,
-        avatar: member.avatar || "/assets/images/default-avatar.jpg",
-        email: member.email || "traveler@example.com",
-        bio: member.bio || "Passionate traveler and adventure seeker.",
-        location: member.location || "Traveler",
-        phone: member.phone || "+1 (555) 123-4567",
-        role: member.role || "member",
-        verified: member.verified || true,
-        joinedDate: member.joinedDate,
-        level: member.level || 1,
-        coins: member.coins || 0,
-        tripsCompleted: member.tripsCompleted || 0,
+        id: completeProfile.id || completeProfile._id,
+        name: completeProfile.name || completeProfile.fullName,
+        fullName: completeProfile.fullName || completeProfile.name,
+        avatar: avatarUrl || "/assets/images/default-avatar.webp",
+        email: completeProfile.email || "traveler@example.com",
+        bio: completeProfile.bio || "Passionate traveler and adventure seeker.",
+        location: completeProfile.location || "Traveler",
+        phone: completeProfile.phone || "+1 (555) 123-4567",
+        role: completeProfile.role || "member",
+        verified: completeProfile.verified || true,
+        joinedDate: completeProfile.joinedDate,
+        level: completeProfile.level || 1,
+        coins: completeProfile.coins || 0,
+        tripsCompleted: completeProfile.tripsCompleted || 0,
         // Add photos array which might be required by the Profile component
         photos: [
-          member.avatar || "/assets/images/default-avatar.jpg",
+          avatarUrl || "/assets/images/default-avatar.webp",
           "/assets/images/baliadventure.jpeg",
           "/assets/images/Tokyo.jpeg",
           "/assets/images/swissmount.jpeg",
@@ -949,24 +985,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         ]
       };
 
-      // Try to fetch additional profile data from the backend
-      if (member.id || member._id) {
-        try {
-          const token = localStorage.getItem('authToken');
-          const response = await axios.get(`http://localhost:5000/api/profile/${member.id || member._id}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-          });
-
-          if (response.data.success && response.data.profile) {
-            // Merge backend data with formatted member data
-            Object.assign(formattedMember, response.data.profile);
-          }
-        } catch (err) {
-          console.log('Could not fetch additional profile data:', err.message);
-          // Continue with the formatted member data
-        }
-      }
-
+      console.log("Viewing member profile:", formattedMember);
       setSelectedMember(formattedMember);
       setShowMemberProfile(true);
     } catch (error) {
@@ -974,9 +993,9 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       // Show a basic profile even if there's an error
       setSelectedMember({
         ...member,
-        avatar: member.avatar || "/assets/images/default-avatar.jpg",
+        avatar: member.avatar || "/assets/images/default-avatar.webp",
         bio: "Passionate traveler and adventure seeker.",
-        photos: [member.avatar || "/assets/images/default-avatar.jpg"]
+        photos: [member.avatar || "/assets/images/default-avatar.webp"]
       });
       setShowMemberProfile(true);
     }
@@ -1101,78 +1120,60 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       console.warn('⚠️ No tripId provided to fetchTripDetails');
       return;
     }
-
-    setLoadingTripDetails(true);
+    
     try {
-      console.log('🌐 Making API call to:', `http://localhost:5000/api/leaderboard/trip-details/${tripId}`);
-      const response = await axios.get(`http://localhost:5000/api/leaderboard/trip-details/${tripId}`);
-      console.log('📡 API Response received:', response.data);
-
+      setLoadingTripDetails(true);
+      
+      // Use BACKEND_URL for consistency
+      const response = await axios.get(`${BACKEND_URL}/api/trips/${tripId}`);
+      
       if (response.data.success) {
-        console.log('✅ Setting trip details state...');
-        setTripDetails(response.data.trip);
-        setTripStatistics(response.data.statistics);
-        setTripMembers(response.data.members || []);
-        setCostBreakdown(response.data.costBreakdown);
-
-        console.log('📊 Real-time trip details loaded:', {
-          trip: response.data.trip,
-          statistics: response.data.statistics,
-          members: response.data.members,
-          membersCount: response.data.members?.length || 0,
-          costBreakdown: response.data.costBreakdown
-        });
-
-        // Debug: Log the members array structure
-        if (response.data.members && response.data.members.length > 0) {
-          console.log('👥 Trip members details:', response.data.members);
-        } else {
-          console.log('⚠️ No trip members found in API response');
-        }
-
-        // Update selectedTrip with fetched details
-        if (selectedTrip) {
-          const updatedTrip = {
-            ...selectedTrip,
-            ...response.data.trip,
-            currentParticipants: response.data.statistics.participantsJoined,
-            spots: response.data.statistics.spotsRemaining,
-            maxSpots: response.data.statistics.participantsJoined + response.data.statistics.spotsRemaining,
-            joinedMembers: response.data.members.filter(m => m.role === 'member'),
-            organizer: response.data.members.find(m => m.role === 'organizer')?.name || selectedTrip.organizer,
-            organizerAvatar: response.data.members.find(m => m.role === 'organizer')?.avatar,
-            organizerId: response.data.members.find(m => m.role === 'organizer')?.id
-          };
-          console.log('🔄 Updating selectedTrip with fetched details:', updatedTrip);
-          setSelectedTrip(updatedTrip);
-        }
-      } else {
-        console.error('❌ API returned success=false:', response.data);
+        console.log('✅ Trip details fetched:', response.data);
+        
+        // Extract members from the response
+        const organizer = response.data.trip.organizer ? {
+          id: response.data.trip.organizerId,
+          name: response.data.trip.organizer,
+          avatar: response.data.trip.organizerAvatar,
+          role: 'organizer'
+        } : null;
+        
+        const members = response.data.trip.joinedMembers || [];
+        
+        // Combine organizer and members
+        const allMembers = organizer ? [organizer, ...members] : members;
+        
+        console.log('🔍 Fetching profiles for all members:', allMembers);
+        
+        // Fetch enhanced profiles for all members
+        const enhancedMembers = await fetchMemberProfiles(allMembers);
+        
+        // Separate organizer and members again
+        const enhancedOrganizer = enhancedMembers.find(m => m.role === 'organizer');
+        const enhancedJoinedMembers = enhancedMembers.filter(m => m.role !== 'organizer');
+        
+        // Update trip with enhanced member data
+        const updatedTrip = {
+          ...selectedTrip,
+          ...response.data.trip,
+          organizer: enhancedOrganizer?.name || response.data.trip.organizer,
+          organizerAvatar: enhancedOrganizer?.avatar || response.data.trip.organizerAvatar,
+          organizerId: enhancedOrganizer?.id || response.data.trip.organizerId,
+          joinedMembers: enhancedJoinedMembers
+        };
+        
+        console.log('🔄 Updating selectedTrip with fetched details:', updatedTrip);
+        setSelectedTrip(updatedTrip);
+        
+        // Set trip members for display
+        setTripMembers(enhancedMembers);
+        
+        // Log the trip members to help debug
+        console.log('👥 Trip members set:', enhancedMembers);
       }
     } catch (error) {
       console.error('❌ Error fetching trip details:', error);
-      if (error.response) {
-        console.error('❌ Response status:', error.response.status);
-        console.error('❌ Response data:', error.response.data);
-      } else if (error.request) {
-        console.error('❌ No response received:', error.request);
-      } else {
-        console.error('❌ Error setting up request:', error.message);
-      }
-
-      setNotifications((prev) => [
-        {
-          id: Date.now(),
-          type: "error",
-          title: "Failed to Load Trip Details",
-          message: "Could not fetch real-time trip data",
-          date: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
     } finally {
-      console.log('🔄 Setting loadingTripDetails to false');
       setLoadingTripDetails(false);
     }
   };
@@ -1748,6 +1749,123 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       }
     };
   }, [newTrip.coverImagePreview]);
+
+  // Add or update this function to fetch member profiles with proper authentication
+  const fetchMemberProfiles = async (members) => {
+    if (!members || members.length === 0) return [];
+    
+    try {
+      console.log('fetchMemberProfiles: Fetching profiles for', members.length, 'members');
+      
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Create a map to store fetched profiles
+      const profilesMap = {};
+      
+      // Fetch profiles for each member
+      const fetchPromises = members.map(member => {
+        const memberId = member.id || member._id;
+        if (!memberId) {
+          console.log('fetchMemberProfiles: Skipping member with no ID');
+          return Promise.resolve(null);
+        }
+        
+        console.log(`fetchMemberProfiles: Fetching profile for member ${memberId}`);
+        
+        // Use BACKEND_URL for consistency
+        return axios.get(`${BACKEND_URL}/api/profile/${memberId}`, { headers })
+          .then(response => {
+            if (response.data && response.data.success && response.data.profile) {
+              console.log(`fetchMemberProfiles: Successfully fetched profile for ${memberId}`, response.data.profile);
+              return { id: memberId, profile: response.data.profile };
+            }
+            console.log(`fetchMemberProfiles: No profile data for ${memberId}`);
+            return null;
+          })
+          .catch(err => {
+            console.error(`fetchMemberProfiles: Failed to fetch profile for member ${memberId}:`, err);
+            return null;
+          });
+      });
+      
+      const results = await Promise.all(fetchPromises);
+      
+      // Process results
+      const enhancedMembers = members.map(member => {
+        const memberId = member.id || member._id;
+        const result = results.find(r => r && r.id === memberId);
+        
+        if (result && result.profile) {
+          // Process avatar URL
+          let avatarUrl = result.profile.avatar;
+          
+          // If avatar is not a data URL or absolute URL, ensure it has the correct path
+          if (avatarUrl && !avatarUrl.startsWith('data:') && !avatarUrl.startsWith('http')) {
+            // If it doesn't start with a slash, add one
+            if (!avatarUrl.startsWith('/')) {
+              avatarUrl = `/${avatarUrl}`;
+            }
+          }
+          
+          return {
+            ...member,
+            ...result.profile,
+            // Ensure these fields are always available
+            name: result.profile.fullName || result.profile.name || member.name,
+            avatar: avatarUrl || member.avatar || "/assets/images/default-avatar.webp"
+          };
+        }
+        
+        return member;
+      });
+      
+      console.log('fetchMemberProfiles: Returning enhanced members:', enhancedMembers);
+      return enhancedMembers;
+    } catch (error) {
+      console.error("fetchMemberProfiles: Error fetching member profiles:", error);
+      return members;
+    }
+  };
+
+  // Enhanced getAvatarUrl function with better logging and URL handling
+  const getAvatarUrl = (member) => {
+    if (!member) {
+      console.log('getAvatarUrl: No member provided, using default avatar');
+      return "/assets/images/default-avatar.webp";
+    }
+    
+    // Log the member object to see what we're working with
+    console.log(`getAvatarUrl for member:`, {
+      id: member.id || member._id,
+      name: member.name,
+      avatarValue: member.avatar
+    });
+    
+    // Check if avatar is a base64 string
+    if (member.avatar && member.avatar.startsWith('data:')) {
+      console.log('getAvatarUrl: Using base64 avatar');
+      return member.avatar;
+    }
+    
+    // Check if avatar is an absolute URL
+    if (member.avatar && (member.avatar.startsWith('http://') || member.avatar.startsWith('https://'))) {
+      console.log('getAvatarUrl: Using absolute URL avatar:', member.avatar);
+      return member.avatar;
+    }
+    
+    // Check if avatar is a relative path
+    if (member.avatar) {
+      // Ensure the path starts with a slash
+      const formattedPath = member.avatar.startsWith('/') ? member.avatar : `/${member.avatar}`;
+      console.log('getAvatarUrl: Using relative path avatar:', formattedPath);
+      return formattedPath;
+    }
+    
+    // Fallback to default
+    console.log('getAvatarUrl: No valid avatar found, using default');
+    return "/assets/images/default-avatar.webp";
+  };
 
   return (
     <>
@@ -2780,10 +2898,32 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                               </p>
                               <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
                                 <img
-                                  src={organizer.avatar}
+                                  src={getAvatarUrl(organizer)}
                                   alt={organizer.name}
                                   className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                                   onClick={() => handleViewMemberProfile(organizer)}
+                                  onError={(e) => {
+                                    console.log("Avatar load error for organizer:", {
+                                      name: organizer.name,
+                                      failedSrc: e.target.src,
+                                      avatarProp: organizer.avatar
+                                    });
+                                    
+                                    // Try a different approach if the first one fails
+                                    if (!e.target.src.includes("default-avatar")) {
+                                      e.target.onerror = null; // Prevent infinite error loop
+                                      
+                                      // Try with BACKEND_URL if it's a relative path
+                                      if (organizer.avatar && !organizer.avatar.startsWith('/') && 
+                                          !organizer.avatar.startsWith('http') && !organizer.avatar.startsWith('data:')) {
+                                        console.log("Trying with BACKEND_URL:", `${BACKEND_URL}/${organizer.avatar}`);
+                                        e.target.src = `${BACKEND_URL}/${organizer.avatar}`;
+                                      } else {
+                                        console.log("Falling back to default avatar");
+                                        e.target.src = "/assets/images/default-avatar.webp";
+                                      }
+                                    }
+                                  }}
                                 />
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-2">
@@ -2791,18 +2931,8 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                         onClick={() => handleViewMemberProfile(organizer)}>
                                       {organizer.name}
                                     </h5>
-                                    {organizer.verified && (
-                                      <span className="text-xs bg-[#2c5e4a] text-white px-2 py-0.5 rounded">
-                                        ✓ Verified
-                                      </span>
-                                    )}
                                   </div>
-                                  <p className="text-xs text-[#5E5854]">
-                                    Trip Organizer • Level {organizer.level} • {organizer.coins} coins
-                                  </p>
-                                  <p className="text-xs text-[#5E5854]">
-                                    {organizer.tripsHosted} trips hosted • Rating: {organizer.rating}⭐
-                                  </p>
+                                  <p className="text-xs text-[#5E5854]">Trip Creator</p>
                                 </div>
                               </div>
                             </div>
@@ -2819,14 +2949,36 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                 .slice(0, 4)
                                 .map((member) => (
                                   <div
-                                    key={member.id}
+                                    key={member.id || `member-${member.name}`}
                                     className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
                                   >
                                     <img
-                                      src={member.avatar}
+                                      src={getAvatarUrl(member)}
                                       alt={member.name}
                                       className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                                       onClick={() => handleViewMemberProfile(member)}
+                                      onError={(e) => {
+                                        console.log("Avatar load error for member:", {
+                                          name: member.name,
+                                          failedSrc: e.target.src,
+                                          avatarProp: member.avatar
+                                        });
+                                        
+                                        // Try a different approach if the first one fails
+                                        if (!e.target.src.includes("default-avatar")) {
+                                          e.target.onerror = null; // Prevent infinite error loop
+                                      
+                                          // Try with BACKEND_URL if it's a relative path
+                                          if (member.avatar && !member.avatar.startsWith('/') && 
+                                              !member.avatar.startsWith('http') && !member.avatar.startsWith('data:')) {
+                                            console.log("Trying with BACKEND_URL:", `${BACKEND_URL}/${member.avatar}`);
+                                            e.target.src = `${BACKEND_URL}/${member.avatar}`;
+                                          } else {
+                                            console.log("Falling back to default avatar");
+                                            e.target.src = "/assets/images/default-avatar.webp";
+                                          }
+                                        }
+                                      }}
                                     />
                                     <div className="flex-1">
                                       <div className="flex items-center space-x-2">
@@ -2834,17 +2986,9 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                             onClick={() => handleViewMemberProfile(member)}>
                                           {member.name}
                                         </h5>
-                                        {member.verified && (
-                                          <span className="text-xs bg-[#2c5e4a] text-white px-1 py-0.5 rounded">
-                                            ✓
-                                          </span>
-                                        )}
                                       </div>
                                       <p className="text-xs text-[#5E5854]">
-                                        Joined {member.joinedDate} • Level {member.level}
-                                      </p>
-                                      <p className="text-xs text-[#5E5854]">
-                                        {member.totalTrips} trips • {member.coins} coins
+                                        Joined {new Date(member.joinedDate || Date.now()).toLocaleDateString()}
                                       </p>
                                     </div>
                                   </div>

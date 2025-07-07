@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
+// 🏅 NOMADNOVA TITLE UPDATE FUNCTION
+const updateUserTitle = async (user) => {
+    const newTitle = user.calculatedTitle;
+    const oldTitle = user.title;
+
+    if (newTitle !== oldTitle) {
+        user.title = newTitle;
+        console.log(`🏅 Title updated for ${user.fullName}: ${oldTitle} → ${newTitle} (${user.totalTrips} trips)`);
+        return { titleChanged: true, oldTitle, newTitle };
+    }
+
+    return { titleChanged: false };
+};
+
 // Get Socket.IO instance from app
 let io;
 const setSocketIO = (socketInstance) => {
@@ -18,7 +32,7 @@ router.use((req, res, next) => {
 router.get('/', async (req, res) => {
     try {
         const users = await User.find({})
-            .select('fullName email avatar coins tripsHosted tripsJoined totalTrips level experience lastActive')
+            .select('fullName email avatar coins tripsHosted tripsJoined totalTrips level experience lastActive title')
             .sort({ coins: -1, tripsHosted: -1, tripsJoined: -1 })
             .limit(10);
 
@@ -34,7 +48,8 @@ router.get('/', async (req, res) => {
             totalTrips: user.totalTrips,
             level: user.calculatedLevel,
             experience: user.experience,
-            lastActive: user.lastActive
+            lastActive: user.lastActive,
+            title: user.calculatedTitle
         }));
 
         res.json({
@@ -245,6 +260,9 @@ router.post('/update-trip-stats', async (req, res) => {
         user.level = user.calculatedLevel;
         user.lastActive = new Date();
 
+        // 🏅 UPDATE NOMADNOVA TITLE
+        const titleUpdate = await updateUserTitle(user);
+
         await user.save();
 
         // Emit more detailed leaderboard update
@@ -258,6 +276,7 @@ router.post('/update-trip-stats', async (req, res) => {
                 tripId: tripId,
                 tripDestination: tripDestination,
                 countryAdded: countryAdded ? country : null,
+                titleUpdate: titleUpdate,
                 userStats: {
                     tripsHosted: user.tripsHosted,
                     tripsJoined: user.tripsJoined,
@@ -266,9 +285,22 @@ router.post('/update-trip-stats', async (req, res) => {
                     countriesCount: user.countriesCount,
                     coins: user.coins,
                     level: user.calculatedLevel,
-                    levelProgress: user.levelProgress
+                    levelProgress: user.levelProgress,
+                    title: user.title
                 }
             });
+
+            // 🏅 EMIT SPECIAL TITLE ACHIEVEMENT NOTIFICATION
+            if (titleUpdate.titleChanged) {
+                req.io.emit('titleAchievement', {
+                    userId: user._id,
+                    userName: user.fullName,
+                    oldTitle: titleUpdate.oldTitle,
+                    newTitle: titleUpdate.newTitle,
+                    totalTrips: user.totalTrips,
+                    message: `🏅 ${user.fullName} earned the title "${titleUpdate.newTitle}"!`
+                });
+            }
         }
 
         res.json({
@@ -282,8 +314,10 @@ router.post('/update-trip-stats', async (req, res) => {
                 countries: user.countries,
                 countriesCount: user.countriesCount,
                 level: user.calculatedLevel,
-                levelProgress: user.levelProgress
+                levelProgress: user.levelProgress,
+                title: user.title
             },
+            titleUpdate: titleUpdate,
             message: `Updated stats for ${action}ing trip`,
             countryAdded: countryAdded ? country : null,
             penalty: action.includes('abandon') || action === 'leave' ? -5 : (action === 'host' || action === 'join' ? 5 : 0)
@@ -304,7 +338,7 @@ router.get('/profile/:userId', async (req, res) => {
 
         // Find user with all profile data
         const user = await User.findById(userId)
-            .select('fullName email avatar coins tripsHosted tripsJoined totalTrips level experience lastActive achievements');
+            .select('fullName email avatar coins tripsHosted tripsJoined totalTrips level experience lastActive achievements title');
 
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
@@ -402,6 +436,7 @@ router.get('/profile/:userId', async (req, res) => {
             achievements: user.achievements || [],
             rank: rank,
             levelProgress: Math.round(levelProgress),
+            title: user.calculatedTitle,
 
             // 🌍 DYNAMIC TRAVEL STATISTICS
             totalCountries: countries.length,
@@ -789,6 +824,54 @@ router.get('/trip-details/:tripId', async (req, res) => {
             success: false,
             error: 'Failed to fetch trip details',
             details: error.message
+        });
+    }
+});
+
+// 🧪 TEST ENDPOINT - MANUALLY UPDATE USER TRIP COUNT (FOR TESTING TITLES)
+router.post('/test-update-trips', async (req, res) => {
+    try {
+        const { userId, totalTrips } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const oldTrips = user.totalTrips;
+        const oldTitle = user.title;
+
+        // Update trip count
+        user.totalTrips = totalTrips;
+        user.tripsHosted = Math.floor(totalTrips / 2); // Assume half are hosted
+        user.tripsJoined = totalTrips - user.tripsHosted; // Rest are joined
+
+        // Update title
+        const titleUpdate = await updateUserTitle(user);
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: `Updated ${user.fullName} from ${oldTrips} to ${totalTrips} trips`,
+            user: {
+                id: user._id,
+                name: user.fullName,
+                totalTrips: user.totalTrips,
+                oldTitle: oldTitle,
+                newTitle: user.title,
+                titleChanged: titleUpdate.titleChanged
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in test update:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update user trips'
         });
     }
 });

@@ -80,13 +80,23 @@ export default function ProfilePage({ onClose, currentUser }) {
     }
   }, [currentUser]);
 
-  // 🎯 GET LEVEL BADGE
-  const getLevelBadge = (level) => {
-    if (level >= 10) return { icon: <FaCrown className="text-yellow-500" />, title: "👑 Legendary", color: "from-yellow-400 to-yellow-600" };
-    if (level >= 7) return { icon: <FaGem className="text-purple-500" />, title: "💎 Diamond", color: "from-purple-400 to-purple-600" };
-    if (level >= 5) return { icon: <FaMedal className="text-blue-500" />, title: "🏅 Gold", color: "from-blue-400 to-blue-600" };
-    if (level >= 3) return { icon: <FaFire className="text-orange-500" />, title: "🔥 Silver", color: "from-orange-400 to-orange-600" };
-    return { icon: <FiStar className="text-green-500" />, title: "⭐ Bronze", color: "from-green-400 to-green-600" };
+  // 🏅 GET NOMADNOVA TITLE BASED ON TOTAL TRIPS
+  const getNomadNovaTitle = (totalTrips) => {
+    const trips = totalTrips || 0;
+
+    if (trips >= 150) return { icon: <FaCrown className="text-purple-500" />, title: "🏆 NomadNova Elite", color: "from-purple-400 to-purple-600" };
+    if (trips >= 100) return { icon: <FaCrown className="text-yellow-500" />, title: "👑 NomadNova", color: "from-yellow-400 to-yellow-600" };
+    if (trips >= 85) return { icon: <FaGem className="text-indigo-500" />, title: "🌍 Realm Roamer", color: "from-indigo-400 to-indigo-600" };
+    if (trips >= 75) return { icon: <FaMedal className="text-blue-500" />, title: "🚀 Sky Conqueror", color: "from-blue-400 to-blue-600" };
+    if (trips >= 50) return { icon: <FaFire className="text-green-500" />, title: "🌟 Globe Guru", color: "from-green-400 to-green-600" };
+    if (trips >= 45) return { icon: <FaFire className="text-red-500" />, title: "🔥 Border Breaker", color: "from-red-400 to-red-600" };
+    if (trips >= 35) return { icon: <FaMedal className="text-orange-500" />, title: "✈️ Continental Hopper", color: "from-orange-400 to-orange-600" };
+    if (trips >= 20) return { icon: <FaGem className="text-cyan-500" />, title: "🛩️ Jetsetter Junior", color: "from-cyan-400 to-cyan-600" };
+    if (trips >= 15) return { icon: <FaMedal className="text-teal-500" />, title: "🗺️ Route Rookie", color: "from-teal-400 to-teal-600" };
+    if (trips >= 10) return { icon: <FaFire className="text-pink-500" />, title: "🏙️ City Sampler", color: "from-pink-400 to-pink-600" };
+    if (trips >= 5) return { icon: <FiStar className="text-emerald-500" />, title: "📍 Map Marker", color: "from-emerald-400 to-emerald-600" };
+
+    return { icon: <FiStar className="text-gray-500" />, title: "🌱 New Traveler", color: "from-gray-400 to-gray-600" };
   };
 
   // 🏆 GET ACHIEVEMENT ICON
@@ -133,7 +143,7 @@ export default function ProfilePage({ onClose, currentUser }) {
     );
   }
 
-  const levelBadge = getLevelBadge(profileData?.level || 1);
+  const nomadTitle = getNomadNovaTitle(profileData?.totalTrips || 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#f8f4e3]/90 backdrop-blur-sm">
@@ -152,12 +162,12 @@ export default function ProfilePage({ onClose, currentUser }) {
                 }}
               />
               <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] rounded-full p-2">
-                {levelBadge.icon}
+                {nomadTitle.icon}
               </div>
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white">{profileData?.name}</h2>
-              <p className="text-[#f8d56b]">{levelBadge.title} • Level {profileData?.level}</p>
+              <p className="text-[#f8d56b]">{nomadTitle.title} • {profileData?.totalTrips || 0} trips</p>
               <p className="text-white/80 text-sm">Rank #{profileData?.rank} • {profileData?.email}</p>
             </div>
           </div>
@@ -231,8 +241,8 @@ export default function ProfilePage({ onClose, currentUser }) {
                 <span className="text-[#5E5854]">Level {(profileData?.level || 1) + 1}</span>
               </div>
               <div className="w-full bg-[#e1d9c8] rounded-full h-4">
-                <div 
-                  className={`bg-gradient-to-r ${levelBadge.color} h-4 rounded-full transition-all duration-500`}
+                <div
+                  className={`bg-gradient-to-r ${nomadTitle.color} h-4 rounded-full transition-all duration-500`}
                   style={{ width: `${profileData?.levelProgress || 0}%` }}
                 ></div>
               </div>

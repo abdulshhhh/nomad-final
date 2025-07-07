@@ -5,6 +5,20 @@ const Trip = require('../models/Trip');
 const User = require('../models/User');
 const JoinedTrip = require('../models/JoinedTrip');
 
+// 🏅 NOMADNOVA TITLE UPDATE FUNCTION
+const updateUserTitle = async (user) => {
+    const newTitle = user.calculatedTitle;
+    const oldTitle = user.title;
+
+    if (newTitle !== oldTitle) {
+        user.title = newTitle;
+        console.log(`🏅 Title updated for ${user.fullName}: ${oldTitle} → ${newTitle} (${user.totalTrips} trips)`);
+        return { titleChanged: true, oldTitle, newTitle };
+    }
+
+    return { titleChanged: false };
+};
+
 class TripAutoCompletionService {
   constructor(io) {
     this.io = io;
@@ -122,9 +136,25 @@ class TripAutoCompletionService {
         organizer.experience += 10;
         organizer.level = organizer.calculatedLevel;
         organizer.lastActive = new Date();
+
+        // 🏅 UPDATE NOMADNOVA TITLE
+        const titleUpdate = await updateUserTitle(organizer);
+
         await organizer.save();
-        
+
         console.log(`🏆 Rewarded organizer ${organizer.fullName} with 10 coins for trip completion`);
+
+        // 🏅 EMIT TITLE ACHIEVEMENT IF CHANGED
+        if (titleUpdate.titleChanged && this.io) {
+          this.io.emit('titleAchievement', {
+            userId: organizer._id,
+            userName: organizer.fullName,
+            oldTitle: titleUpdate.oldTitle,
+            newTitle: titleUpdate.newTitle,
+            totalTrips: organizer.totalTrips,
+            message: `🏅 ${organizer.fullName} earned the title "${titleUpdate.newTitle}"!`
+          });
+        }
       }
 
       // Reward participants (+5 coins each)
@@ -136,9 +166,25 @@ class TripAutoCompletionService {
             user.experience += 5;
             user.level = user.calculatedLevel;
             user.lastActive = new Date();
+
+            // 🏅 UPDATE NOMADNOVA TITLE
+            const titleUpdate = await updateUserTitle(user);
+
             await user.save();
-            
+
             console.log(`🏆 Rewarded participant ${user.fullName} with 5 coins for trip completion`);
+
+            // 🏅 EMIT TITLE ACHIEVEMENT IF CHANGED
+            if (titleUpdate.titleChanged && this.io) {
+              this.io.emit('titleAchievement', {
+                userId: user._id,
+                userName: user.fullName,
+                oldTitle: titleUpdate.oldTitle,
+                newTitle: titleUpdate.newTitle,
+                totalTrips: user.totalTrips,
+                message: `🏅 ${user.fullName} earned the title "${titleUpdate.newTitle}"!`
+              });
+            }
           }
         }
       }
