@@ -33,7 +33,7 @@ const { router: messageRoutes, setSocketIO: setMessageSocketIO } = require('./ro
 const profileRoutes = require('./routes/profile');
 const memoryRoutes = require('./routes/memory');
 const adminRoutes = require('./routes/admin');
-const leaderboardRoutes = require('./routes/leaderboard');
+const { router: leaderboardRoutes, setSocketIO: setLeaderboardSocketIO } = require('./routes/leaderboard');
 const publicRoutes = require('./routes/public');
 
 // Middleware
@@ -149,6 +149,7 @@ setTripSocketIO(io);
 setJoinedTripsSocketIO(io);
 setNotificationSocketIO(io);
 setMessageSocketIO(io);
+setLeaderboardSocketIO(io);
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);

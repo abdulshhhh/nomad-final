@@ -3,6 +3,7 @@ import { useNavigate, Link, Routes, Route } from "react-router-dom"; // Add Link
 import NotificationSystem from "./NotificationSystem";
 import GroupChat from "./GroupChat";
 import MemberProfiles from "./MemberProfiles";
+import Profile from "./Profile"; // Import Profile component for member profile viewing
 import AllTrips from "./AllTrips"; // Import the new component (create this file)
 import LeaderboardPage from "./LeaderboardPage";
 import io from 'socket.io-client';
@@ -95,125 +96,6 @@ const popularDestinations = [
   },
 ];
 
-function Profile({ user, onClose, onMessage, onPhotoClick }) {
-  return (
-    <div className="bg-white rounded-xl shadow-xl overflow-hidden max-w-4xl w-full">
-      <div className="relative h-48 bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a]">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition-colors"
-        >
-          <FiX size={20} />
-        </button>
-      </div>
-      <div className="flex flex-col md:flex-row -mt-20">
-        <div className="md:w-1/3 flex flex-col items-center px-4 pt-4">
-          <img
-            src={user.avatar || "/assets/images/default-avatar.jpg"}
-            alt={user.name}
-            className="w-32 h-32 rounded-full border-4 border-[#f8d56b] object-cover mb-4 cursor-pointer"
-            onClick={() => onPhotoClick(user.avatar)}
-          />
-          <h4 className="text-2xl font-bold text-[#2c5e4a]">
-            {user.fullName || user.name}
-          </h4>
-          <p className="text-[#5E5854]">{user.location}</p>
-          <button
-            onClick={onMessage}
-            className="mt-4 bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] hover:from-[#f87c6d] hover:to-[#f8a95d] text-white px-6 py-2 rounded-full transition-colors font-cinzel flex items-center"
-          >
-            <FiMail className="mr-2" /> Message
-          </button>
-        </div>
-        <div className="md:w-2/3 p-6 space-y-6">
-          <div className="bg-[#f8f4e3] p-4 rounded-xl border border-[#d1c7b7]">
-            <h4 className="font-bold text-[#2c5e4a] mb-3">My Photos</h4>
-            <div className="grid grid-cols-3 gap-4">
-              {user.photos && user.photos.map((photo, index) => (
-                <div
-                  key={index}
-                  className="aspect-square overflow-hidden rounded-lg cursor-pointer"
-                  onClick={() => onPhotoClick(photo)}
-                >
-                  <img
-                    src={photo}
-                    alt={`User photo ${index + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-[#f8f4e3] p-4 rounded-xl border border-[#d1c7b7]">
-            <h4 className="font-bold text-[#2c5e4a] mb-3">Upcoming Trips</h4>
-            <div className="space-y-4">
-              {(user.id === currentUserData?.id
-                ? joinedTripsData
-                : [] // No mock data - use real-time data only
-              ).map((trip) => (
-                <div
-                  key={trip.id}
-                  className="flex items-center bg-white p-3 rounded-lg border border-[#d1c7b7]"
-                >
-                  <img
-                    src={trip.image || "/assets/images/default-trip.jpeg"}
-                    alt={trip.title || trip.destination}
-                    className="w-16 h-16 rounded-lg object-cover mr-4"
-                  />
-                  <div>
-                    <h5 className="font-bold text-[#2c5e4a]">
-                      {trip.title || trip.destination}
-                    </h5>
-                    <p className="text-sm text-[#5E5854] flex items-center">
-                      <FiCalendar className="mr-1" /> {trip.destination} •{" "}
-                      {trip.date || `${trip.fromDate} - ${trip.toDate}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {user.id === currentUserData?.id &&
-                joinedTripsData.length === 0 && (
-                  <p className="text-[#5E5854] text-center py-4">
-                    No upcoming trips
-                  </p>
-                )}
-              {user.id !== currentUserData?.id && (
-                  <p className="text-[#5E5854] text-center py-4">
-                    No upcoming trips
-                  </p>
-                )}
-            </div>
-          </div>
-
-          <div className="bg-[#f8f4e3] p-4 rounded-xl border border-[#d1c7b7]">
-            <h4 className="font-bold text-[#2c5e4a] mb-3">The road so far</h4>
-            <div className="grid grid-cols-2 gap-4">
-              {completedTrips.map((trip) => (
-                <div
-                  key={trip.id}
-                  className="relative rounded-lg overflow-hidden h-32"
-                >
-                  <img
-                    src={trip.image}
-                    alt={trip.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3">
-                    <h5 className="text-white font-semibold text-sm">
-                      {trip.title}
-                    </h5>
-                    <p className="text-white/80 text-xs">{trip.date}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   // --- STATE ---
   const [trips, setTrips] = useState([]);
@@ -1037,6 +919,99 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     setMobileMenuOpen(false);
   };
 
+  // --- VIEW MEMBER PROFILE HANDLER ---
+  const handleViewMemberProfile = async (member) => {
+    try {
+      // Format the member data with all required properties
+      const formattedMember = {
+        id: member.id || member._id,
+        name: member.name || member.fullName,
+        fullName: member.fullName || member.name,
+        avatar: member.avatar || "/assets/images/default-avatar.jpg",
+        email: member.email || "traveler@example.com",
+        bio: member.bio || "Passionate traveler and adventure seeker.",
+        location: member.location || "Traveler",
+        phone: member.phone || "+1 (555) 123-4567",
+        role: member.role || "member",
+        verified: member.verified || true,
+        joinedDate: member.joinedDate,
+        level: member.level || 1,
+        coins: member.coins || 0,
+        tripsCompleted: member.tripsCompleted || 0,
+        // Add photos array which might be required by the Profile component
+        photos: [
+          member.avatar || "/assets/images/default-avatar.jpg",
+          "/assets/images/baliadventure.jpeg",
+          "/assets/images/Tokyo.jpeg",
+          "/assets/images/swissmount.jpeg",
+          "/assets/images/icelandnorthernlights.jpeg",
+          "/assets/images/santorinisunset.jpeg"
+        ]
+      };
+
+      // Try to fetch additional profile data from the backend
+      if (member.id || member._id) {
+        try {
+          const token = localStorage.getItem('authToken');
+          const response = await axios.get(`http://localhost:5000/api/profile/${member.id || member._id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+
+          if (response.data.success && response.data.profile) {
+            // Merge backend data with formatted member data
+            Object.assign(formattedMember, response.data.profile);
+          }
+        } catch (err) {
+          console.log('Could not fetch additional profile data:', err.message);
+          // Continue with the formatted member data
+        }
+      }
+
+      setSelectedMember(formattedMember);
+      setShowMemberProfile(true);
+    } catch (error) {
+      console.error('Error viewing member profile:', error);
+      // Show a basic profile even if there's an error
+      setSelectedMember({
+        ...member,
+        avatar: member.avatar || "/assets/images/default-avatar.jpg",
+        bio: "Passionate traveler and adventure seeker.",
+        photos: [member.avatar || "/assets/images/default-avatar.jpg"]
+      });
+      setShowMemberProfile(true);
+    }
+  };
+
+  // --- VIEW ALL MEMBERS HANDLER ---
+  const handleViewAllMembers = (trip) => {
+    setSelectedTripForMembers(trip);
+    setShowMemberProfiles(true);
+  };
+
+  // --- PROFILE MESSAGE HANDLER ---
+  const handleProfileMessage = () => {
+    // Close the member profile modal
+    setShowMemberProfile(false);
+    // You can add messaging functionality here if needed
+    console.log('Message functionality can be implemented here');
+  };
+
+  // --- PHOTO CLICK HANDLER ---
+  const handlePhotoClick = (photo) => {
+    setSelectedPhoto(photo);
+    setShowPhotoModal(true);
+  };
+
+  // --- START CHAT WITH MEMBER HANDLER ---
+  const handleStartChatWithMember = (member) => {
+    // Close the member profiles modal
+    setShowMemberProfiles(false);
+    // You can implement chat functionality here
+    console.log('Starting chat with member:', member.name);
+    // For now, just show an alert
+    alert(`Chat functionality with ${member.name} can be implemented here`);
+  };
+
   // --- VIEW TRIP HANDLER ---
   const handleViewTrip = async (trip) => {
     console.log("Viewing trip:", trip); // Add this to debug
@@ -1137,15 +1112,23 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         console.log('✅ Setting trip details state...');
         setTripDetails(response.data.trip);
         setTripStatistics(response.data.statistics);
-        setTripMembers(response.data.members);
+        setTripMembers(response.data.members || []);
         setCostBreakdown(response.data.costBreakdown);
 
         console.log('📊 Real-time trip details loaded:', {
           trip: response.data.trip,
           statistics: response.data.statistics,
-          members: response.data.members.length,
+          members: response.data.members,
+          membersCount: response.data.members?.length || 0,
           costBreakdown: response.data.costBreakdown
         });
+
+        // Debug: Log the members array structure
+        if (response.data.members && response.data.members.length > 0) {
+          console.log('👥 Trip members details:', response.data.members);
+        } else {
+          console.log('⚠️ No trip members found in API response');
+        }
 
         // Update selectedTrip with fetched details
         if (selectedTrip) {
@@ -2783,7 +2766,11 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                         </div>
                       </div>
 
-                      {tripMembers.length > 0 ? (
+                      {loadingTripDetails ? (
+                        <div className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7] text-center">
+                          <p className="text-[#5E5854] text-sm">Loading trip members...</p>
+                        </div>
+                      ) : tripMembers.length > 0 ? (
                         <>
                           {/* Organizer */}
                           {tripMembers.filter(member => member.role === 'organizer').map((organizer) => (
@@ -2800,7 +2787,8 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                 />
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-2">
-                                    <h5 className="font-medium text-[#2c5e4a]">
+                                    <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
+                                        onClick={() => handleViewMemberProfile(organizer)}>
                                       {organizer.name}
                                     </h5>
                                     {organizer.verified && (
@@ -2842,7 +2830,8 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                     />
                                     <div className="flex-1">
                                       <div className="flex items-center space-x-2">
-                                        <h5 className="font-medium text-[#2c5e4a]">
+                                        <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
+                                            onClick={() => handleViewMemberProfile(member)}>
                                           {member.name}
                                         </h5>
                                         {member.verified && (
@@ -2909,39 +2898,50 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                             <p className="text-[#5E5854] mb-2 text-sm">
                               Members ({selectedTrip.joinedMembers?.length || 0}):
                             </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {selectedTrip.joinedMembers
-                                ?.slice(0, 4)
-                                .map((member) => (
-                                  <div
-                                    key={member.id}
-                                    className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
-                                  >
-                                    <img
-                                      src={member.avatar}
-                                      alt={member.name}
-                                      className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                      onClick={() => handleViewMemberProfile(member)}
-                                    />
-                                    <div>
-                                      <h5 className="font-medium text-[#2c5e4a]">
-                                        {member.name}
-                                      </h5>
-                                      <p className="text-xs text-[#5E5854]">
-                                        Joined {member.joinedDate}
-                                      </p>
-                                    </div>
+                            {selectedTrip.joinedMembers && selectedTrip.joinedMembers.length > 0 ? (
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {selectedTrip.joinedMembers
+                                    .slice(0, 4)
+                                    .map((member) => (
+                                      <div
+                                        key={member.id}
+                                        className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
+                                      >
+                                        <img
+                                          src={member.avatar || "/assets/images/default-avatar.jpg"}
+                                          alt={member.name}
+                                          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
+                                          onClick={() => handleViewMemberProfile(member)}
+                                        />
+                                        <div>
+                                          <h5 className="font-medium text-[#2c5e4a] cursor-pointer"
+                                              onClick={() => handleViewMemberProfile(member)}>
+                                            {member.name}
+                                          </h5>
+                                          <p className="text-xs text-[#5E5854]">
+                                            Joined {member.joinedDate}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                                {selectedTrip.joinedMembers.length > 4 && (
+                                  <div className="mt-3 text-center">
+                                    <button
+                                      onClick={() => handleViewAllMembers(selectedTrip)}
+                                      className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
+                                    >
+                                      + {selectedTrip.joinedMembers.length - 4} more members
+                                    </button>
                                   </div>
-                                ))}
-                            </div>
-                            {selectedTrip.joinedMembers?.length > 4 && (
-                              <div className="mt-3 text-center">
-                                <button
-                                  onClick={() => handleViewAllMembers(selectedTrip)}
-                                  className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
-                                >
-                                  + {selectedTrip.joinedMembers.length - 4} more members
-                                </button>
+                                )}
+                              </>
+                            ) : (
+                              <div className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7] text-center">
+                                <p className="text-[#5E5854] text-sm">
+                                  No members have joined this trip yet. Be the first to join!
+                                </p>
                               </div>
                             )}
                           </div>

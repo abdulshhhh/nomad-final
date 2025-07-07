@@ -282,16 +282,29 @@ export default function SignUp({ onSignUpSuccess, onLoginClick, onBackToLanding 
             <hr className="flex-grow border-white/30" />
           </div>
 
-          <button 
-            className="w-full flex items-center justify-center bg-white hover:bg-gray-100 transition-all duration-300 rounded-xl py-3 mb-5 shadow-md hover:shadow-lg transform hover:-translate-y-1" 
-            onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}
+          <button
+            className={`w-full flex items-center justify-center transition-all duration-300 rounded-xl py-3 mb-5 shadow-md transform ${
+              agreed
+                ? 'bg-white hover:bg-gray-100 hover:shadow-lg hover:-translate-y-1 cursor-pointer'
+                : 'bg-gray-400/50 cursor-not-allowed'
+            }`}
+            onClick={() => {
+              if (agreed) {
+                window.location.href = 'http://localhost:5000/api/auth/google';
+              } else {
+                alert('Please agree to the Terms & Conditions and Privacy Policy to continue with Google signup.');
+              }
+            }}
+            disabled={!agreed}
           >
             <img
               src="\assets\images\Google__G__logo.svg.webp"
               alt="Google icon"
-              className="w-6 h-6 mr-3"
+              className={`w-6 h-6 mr-3 ${agreed ? '' : 'opacity-50'}`}
             />
-            <span className="text-gray-800 font-semibold">Sign up with Google</span>
+            <span className={`font-semibold ${agreed ? 'text-gray-800' : 'text-gray-500'}`}>
+              Sign up with Google
+            </span>
           </button>
 
           <div className="mt-6 text-center">

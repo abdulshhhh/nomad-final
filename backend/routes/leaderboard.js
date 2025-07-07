@@ -2,6 +2,18 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
+// Get Socket.IO instance from app
+let io;
+const setSocketIO = (socketInstance) => {
+  io = socketInstance;
+};
+
+// Middleware to add io to request object
+router.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // 🏆 GET DYNAMIC LEADERBOARD (TOP 10 ONLY)
 router.get('/', async (req, res) => {
     try {
@@ -173,8 +185,8 @@ router.post('/update-trip-stats', async (req, res) => {
             user.coins += 5;
             user.experience += 5;
             coinChange = 5;
-            message = tripDestination 
-                ? `Earned 5 coins for hosting a trip to ${tripDestination}!` 
+            message = tripDestination
+                ? `Earned 5 coins for hosting a trip to ${tripDestination}!`
                 : 'Earned 5 coins for hosting a trip!';
             
             // Add bonus for new country
@@ -190,8 +202,8 @@ router.post('/update-trip-stats', async (req, res) => {
             user.coins += 5;
             user.experience += 5;
             coinChange = 5;
-            message = tripDestination 
-                ? `Earned 5 coins for joining a trip to ${tripDestination}!` 
+            message = tripDestination
+                ? `Earned 5 coins for joining a trip to ${tripDestination}!`
                 : 'Earned 5 coins for joining a trip!';
             
             // Add bonus for new country
@@ -225,8 +237,8 @@ router.post('/update-trip-stats', async (req, res) => {
             user.coins = Math.max(0, user.coins - 5);
             user.experience = Math.max(0, user.experience - 5);
             coinChange = -5;
-            message = tripDestination 
-                ? `Lost 5 coins for ${action === 'abandon' ? 'abandoning' : 'leaving'} trip to ${tripDestination}` 
+            message = tripDestination
+                ? `Lost 5 coins for ${action === 'abandon' ? 'abandoning' : 'leaving'} trip to ${tripDestination}`
                 : `Lost 5 coins for ${action === 'abandon' ? 'abandoning' : 'leaving'} a trip`;
         }
 
@@ -452,10 +464,18 @@ router.get('/user-posted-trips/:userId', async (req, res) => {
 
             // Format date range
             const formatDate = (date) => {
-                return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
+                if (!date) return 'TBD';
+                try {
+                    const dateObj = new Date(date);
+                    if (isNaN(dateObj.getTime())) return 'TBD';
+                    return dateObj.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                } catch (error) {
+                    console.error('Error formatting date:', error);
+                    return 'TBD';
+                }
             };
             const dateRange = `${formatDate(fromDate)} - ${formatDate(toDate)}, ${fromDate.getFullYear()}`;
 
@@ -537,10 +557,18 @@ router.get('/user-joined-trips/:userId', async (req, res) => {
 
             // Format date range
             const formatDate = (date) => {
-                return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
+                if (!date) return 'TBD';
+                try {
+                    const dateObj = new Date(date);
+                    if (isNaN(dateObj.getTime())) return 'TBD';
+                    return dateObj.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                } catch (error) {
+                    console.error('Error formatting date:', error);
+                    return 'TBD';
+                }
             };
             const dateRange = `${formatDate(fromDate)} - ${formatDate(toDate)}, ${fromDate.getFullYear()}`;
 
@@ -632,6 +660,23 @@ router.get('/trip-details/:tripId', async (req, res) => {
         const organizerRating = trip.createdBy ?
             Math.min(4.2 + (trip.createdBy.tripsHosted * 0.1), 5.0) : 4.0;
 
+        // Helper function to safely format dates
+        const formatJoinedDate = (date) => {
+            if (!date) return 'Recently';
+            try {
+                const dateObj = new Date(date);
+                if (isNaN(dateObj.getTime())) return 'Recently';
+                return dateObj.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return 'Recently';
+            }
+        };
+
         // Prepare members list with real data
         const members = [
             // Trip organizer
@@ -641,17 +686,13 @@ router.get('/trip-details/:tripId', async (req, res) => {
                 email: trip.createdBy.email,
                 avatar: trip.createdBy.avatar || '/assets/images/default-avatar.webp',
                 role: 'organizer',
-                joinedDate: trip.createdAt.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                }),
-                coins: trip.createdBy.coins,
-                level: trip.createdBy.level,
-                tripsHosted: trip.createdBy.tripsHosted,
-                totalTrips: trip.createdBy.totalTrips,
+                joinedDate: formatJoinedDate(trip.createdAt),
+                coins: trip.createdBy.coins || 0,
+                level: trip.createdBy.level || 1,
+                tripsHosted: trip.createdBy.tripsHosted || 0,
+                totalTrips: trip.createdBy.totalTrips || 0,
                 rating: organizerRating,
-                verified: trip.createdBy.totalTrips >= 3 || trip.createdBy.coins >= 50
+                verified: (trip.createdBy.totalTrips >= 3) || (trip.createdBy.coins >= 50)
             },
             // Joined members
             ...joinedTripRecords.map(record => ({
@@ -660,18 +701,14 @@ router.get('/trip-details/:tripId', async (req, res) => {
                 email: record.userId.email,
                 avatar: record.userId.avatar || '/assets/images/default-avatar.webp',
                 role: 'member',
-                joinedDate: record.createdAt.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                }),
-                coins: record.userId.coins,
-                level: record.userId.level,
-                tripsHosted: record.userId.tripsHosted,
-                tripsJoined: record.userId.tripsJoined,
-                totalTrips: record.userId.totalTrips,
-                rating: Math.min(4.0 + (record.userId.totalTrips * 0.1), 5.0),
-                verified: record.userId.totalTrips >= 3 || record.userId.coins >= 50
+                joinedDate: formatJoinedDate(record.createdAt),
+                coins: record.userId.coins || 0,
+                level: record.userId.level || 1,
+                tripsHosted: record.userId.tripsHosted || 0,
+                tripsJoined: record.userId.tripsJoined || 0,
+                totalTrips: record.userId.totalTrips || 0,
+                rating: Math.min(4.0 + ((record.userId.totalTrips || 0) * 0.1), 5.0),
+                verified: ((record.userId.totalTrips || 0) >= 3) || ((record.userId.coins || 0) >= 50)
             }))
         ];
 
@@ -756,8 +793,4 @@ router.get('/trip-details/:tripId', async (req, res) => {
     }
 });
 
-module.exports = router;
-
-
-
-
+module.exports = { router, setSocketIO };
