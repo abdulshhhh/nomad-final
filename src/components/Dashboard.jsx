@@ -912,7 +912,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   // --- SHOW PROFILE HANDLER ---
   const handleShowProfile = () => {
     if (typeof navigate === "function") {
-      navigate("/profile");
+      // Navigate to profile with state containing the current user
+      navigate("/profile", { 
+        state: { 
+          currentUser: effectiveUser 
+        }
+      });
     } else {
       window.location.href = "/profile";
     }

@@ -128,4 +128,45 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
+// Add a route to create a profile if one doesn't exist
+router.post('/create', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Check if profile already exists
+    let profile = await Profile.findOne({ userId });
+    
+    if (profile) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Profile already exists for this user' 
+      });
+    }
+    
+    // Create new profile with default values
+    profile = new Profile({
+      userId,
+      fullName: req.body.fullName || req.user.name || "New User",
+      bio: req.body.bio || "",
+      location: req.body.location || "",
+      phone: req.body.phone || "",
+      travelCategories: req.body.travelCategories || [],
+      languages: req.body.languages || [],
+      avatar: req.body.avatar || "/assets/images/default-avatar.webp",
+      joinedDate: new Date().toISOString().split('T')[0]
+    });
+    
+    await profile.save();
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Profile created successfully',
+      profile: profile.toObject()
+    });
+  } catch (err) {
+    console.error('Error creating profile:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

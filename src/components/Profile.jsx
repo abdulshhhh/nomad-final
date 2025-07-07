@@ -243,7 +243,14 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
       try {
         setIsLoading(true); // Set loading to true before fetch
         // Use userId if provided, otherwise use currentUser.id
-        const profileId = userId || currentUser.id;
+        const profileId = userId || (currentUser && (currentUser.id || currentUser._id));
+        
+        if (!profileId) {
+          console.error("No profile ID available");
+          setIsLoading(false);
+          return;
+        }
+        
         console.log("Fetching profile data for user:", profileId);
         
         const token = localStorage.getItem('authToken');
@@ -254,24 +261,42 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
         console.log("Profile data received:", response.data);
         
         if (response.data.success && response.data.profile) {
-          // Log the avatar data specifically
-          console.log("Avatar from API:", 
-            response.data.profile.avatar ? 
-            `[Base64 data: ${response.data.profile.avatar.substring(0, 30)}...]` : 
-            "No avatar");
-          
           setProfileData(response.data.profile);
         } else {
           throw new Error("Invalid profile data received");
         }
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
+        
+        // If we get a 404, it means the profile doesn't exist yet
+        // Let's create a default profile for this user
+        if (err.response && err.response.status === 404) {
+          try {
+            // Use the default profile endpoint to get a template
+            const defaultResponse = await axios.get(`${BACKEND_URL}/api/default-profile`, {
+              params: { name: currentUser?.fullName || currentUser?.name || "New User" }
+            });
+            
+            if (defaultResponse.data && defaultResponse.data.profile) {
+              console.log("Using default profile template");
+              setProfileData({
+                ...defaultResponse.data.profile,
+                ...currentUser,
+                id: currentUser?.id || currentUser?._id,
+                _id: currentUser?._id || currentUser?.id
+              });
+            }
+          } catch (defaultErr) {
+            console.error("Failed to get default profile:", defaultErr);
+          }
+        }
+        
         // Fallback to currentUser if available and we're viewing our own profile
         if (isOwnProfile && currentUser) {
           console.log("Using fallback profile data from currentUser");
           setProfileData({
             ...currentUser,
-            fullName: currentUser.fullName || "New User",
+            fullName: currentUser.fullName || currentUser.name || "New User",
             bio: currentUser.bio || "",
             location: currentUser?.location || "",
             phone: currentUser?.phone || "",
@@ -285,7 +310,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
       }
     };
 
-    if ((currentUser && currentUser.id) || userId) {
+    if ((currentUser && (currentUser.id || currentUser._id)) || userId) {
       fetchProfileData();
     } else {
       setIsLoading(false); // Set loading to false if no user to fetch
