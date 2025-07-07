@@ -16,8 +16,9 @@ import MemoryModal from './MemoryModal';
 import { FiTrash2 } from 'react-icons/fi';
 import { BACKEND_URL } from '../config';
 
-export default function Profile({ currentUser, onClose, onMessage }) {
+export default function Profile({ currentUser, userId, onClose, onMessage }) {
   console.log("Profile component rendering with currentUser:", currentUser);
+  console.log("Profile component rendering for userId:", userId);
   
   const location = useLocation();
   const [activeTab, setActiveTab] = React.useState('overview');
@@ -70,16 +71,30 @@ export default function Profile({ currentUser, onClose, onMessage }) {
     tripsJoined: 0
   });
 
+  // Add this state variable to track if this is the current user's own profile
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+
+  // Determine if this is the current user's own profile
+  useEffect(() => {
+    if (currentUser && userId) {
+      // If userId is provided, we're viewing someone else's profile
+      setIsOwnProfile(currentUser.id === userId);
+    } else if (currentUser) {
+      // If no userId is provided, we're viewing our own profile
+      setIsOwnProfile(true);
+    }
+  }, [currentUser, userId]);
+
   // Add this function to fetch user stats from the leaderboard API
   const fetchUserStats = async () => {
     try {
-      const userId = currentUser?.id || currentUser?._id;
-      if (!userId) return;
+      const profileId = userId || currentUser?.id || currentUser?._id;
+      if (!profileId) return;
       
-      console.log('Fetching user stats from leaderboard for user:', userId);
+      console.log('Fetching user stats from leaderboard for user:', profileId);
       
       // Use the leaderboard profile endpoint which has all the stats
-      const response = await fetch(`/api/leaderboard/profile/${userId}`);
+      const response = await fetch(`/api/leaderboard/profile/${profileId}`);
       const data = await response.json();
       
       console.log('Leaderboard profile data:', data);
@@ -154,10 +169,12 @@ export default function Profile({ currentUser, onClose, onMessage }) {
     const fetchProfileData = async () => {
       try {
         setIsLoading(true); // Set loading to true before fetch
-        console.log("Fetching profile data for user:", currentUser?.id);
+        // Use userId if provided, otherwise use currentUser.id
+        const profileId = userId || currentUser.id;
+        console.log("Fetching profile data for user:", profileId);
         
         const token = localStorage.getItem('authToken');
-        const response = await axios.get(`${BACKEND_URL}/api/profile/${currentUser.id}`, {
+        const response = await axios.get(`${BACKEND_URL}/api/profile/${profileId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         
@@ -176,8 +193,8 @@ export default function Profile({ currentUser, onClose, onMessage }) {
         }
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
-        // Fallback to currentUser if available
-        if (currentUser) {
+        // Fallback to currentUser if available and we're viewing our own profile
+        if (isOwnProfile && currentUser) {
           console.log("Using fallback profile data from currentUser");
           setProfileData({
             ...currentUser,
@@ -195,12 +212,12 @@ export default function Profile({ currentUser, onClose, onMessage }) {
       }
     };
 
-    if (currentUser && currentUser.id) {
+    if ((currentUser && currentUser.id) || userId) {
       fetchProfileData();
     } else {
       setIsLoading(false); // Set loading to false if no user to fetch
     }
-  }, [currentUser, BACKEND_URL]);
+  }, [currentUser, userId, BACKEND_URL, isOwnProfile]);
 
   // Fetch joined trips from backend
   useEffect(() => {
@@ -220,12 +237,13 @@ export default function Profile({ currentUser, onClose, onMessage }) {
   // Add this useEffect to fetch memories when the profile loads
   useEffect(() => {
     const fetchUserMemories = async () => {
-      if (currentUser && currentUser.id) {
+      if (userId || (currentUser && currentUser.id)) {
         try {
           setIsLoadingMemory(true);
-          console.log("Fetching memories for user:", currentUser.id);
+          const profileId = userId || currentUser.id;
+          console.log("Fetching memories for user:", profileId);
           const token = localStorage.getItem('authToken');
-          const response = await axios.get(`${BACKEND_URL}/api/memories/${currentUser.id}`, {
+          const response = await axios.get(`${BACKEND_URL}/api/memories/${profileId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -513,8 +531,8 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                       />
                     )}
-                    {/* Edit button */}
-                    {currentUser && (
+                    {/* Edit button - only show for own profile */}
+                    {isOwnProfile && (
                       <button
                         onClick={handleEditProfile}
                         className="absolute -bottom-1 -right-1 bg-white hover:bg-gray-100 rounded-full p-1 shadow-md transition-colors"
@@ -549,12 +567,40 @@ export default function Profile({ currentUser, onClose, onMessage }) {
                 
                 {/* Follow/Message buttons - more compact */}
                 <div className="flex mt-3 space-x-2">
-                  {currentUser.id === profileData.id ? (
+                  {isOwnProfile ? (
                     <div className="text-gray-200 text-xs flex items-center">
                       <FiCalendar className="mr-1 w-3 h-3" />
                       <span>Member since {formatMemberSince(profileData.createdAt || profileData.joinedDate)}</span>
                     </div>
-                  ) : null}
+                  ) : (
+                    <>
+                      <button 
+                        onClick={handleFollow} 
+                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
+                          isFollowing ? 'bg-gray-700 text-white' : 'bg-yellow-500 text-white'
+                        }`}
+                      >
+                        {isFollowing ? (
+                          <>
+                            <FiCheck className="mr-1 w-3 h-3" />
+                            Following
+                          </>
+                        ) : (
+                          <>
+                            <FiPlus className="mr-1 w-3 h-3" />
+                            Follow
+                          </>
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => onMessage && onMessage(profileData)}
+                        className="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center"
+                      >
+                        <FiMessageSquare className="mr-1 w-3 h-3" />
+                        Message
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 

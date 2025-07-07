@@ -3967,34 +3967,26 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
 
           {/* Member Profile Modal */}
           {showMemberProfile && selectedMember && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-4xl w-full border border-[#d1c7b7] shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-3xl font-bold text-[#2c5e4a]">Profile</h3>
-                  <button
-                    onClick={() => setShowMemberProfile(false)}
-                    className="text-[#5E5854] hover:text-[#f87c6d] text-3xl font-bold"
-                  >
-                    <FiX />
-                  </button>
-                </div>
-                <div className="flex flex-col items-center">
-                  <img
-                    src={selectedMember.avatar}
-                    alt={selectedMember.name}
-                    className="w-32 h-32 rounded-full border-4 border-[#f8d56b] object-cover mb-4"
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex flex-col items-center">
+                    <img
+                      src={selectedMember.avatar}
+                      alt={selectedMember.name}
+                      className="w-32 h-32 rounded-full border-4 border-[#f8d56b] object-cover mb-4"
+                    />
+                    <h4 className="text-2xl font-bold text-[#2c5e4a]">{selectedMember.fullName || selectedMember.name}</h4>
+                    <p className="text-[#5E5854]">{selectedMember.location}</p>
+                  </div>
+                  
+                  <Profile
+                    currentUser={currentUser}
+                    userId={selectedMember.id || selectedMember._id}
+                    onClose={() => setShowMemberProfile(false)}
+                    onMessage={() => handleProfileMessage()}
                   />
-                  <h4 className="text-2xl font-bold text-[#2c5e4a]">
-                    {selectedMember.fullName || selectedMember.name}
-                  </h4>
-                  <p className="text-[#5E5854]">{selectedMember.location}</p>
                 </div>
-                <Profile
-                  user={selectedMember}
-                  onClose={() => setShowMemberProfile(false)}
-                  onMessage={() => handleProfileMessage()}
-                  onPhotoClick={handlePhotoClick}
-                />
               </div>
             </div>
           )}
