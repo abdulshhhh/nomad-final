@@ -148,18 +148,36 @@ export default function ProfileEdit({ profileData, onClose, onOTPVerification, o
       // Get the auth token
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/profile/update`, {
+      if (!token) {
+        alert('You are not logged in. Please log in again.');
+        // Redirect to login page or handle accordingly
+        return;
+      }
+      
+      console.log("Using token for profile update:", token.substring(0, 10) + "...");
+      
+      // Use the full URL with BACKEND_URL
+      const response = await fetch(`${BACKEND_URL}/api/profile/update`, {
         method: 'POST',
         body: form,
         headers: {
           Authorization: `Bearer ${token}`
         },
-        credentials: 'include', // include cookies for session/JWT
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Server response:', response.status, errorText);
+        
+        // Handle token expiration specifically
+        if (response.status === 401) {
+          // Clear invalid token
+          localStorage.removeItem('authToken');
+          alert('Your session has expired. Please log in again.');
+          // You might want to redirect to login page here
+          return;
+        }
+        
         throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
       }
 

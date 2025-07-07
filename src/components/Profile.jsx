@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   FiUser, FiMapPin, FiCalendar, FiStar, FiGlobe, FiEdit2, FiMessageSquare, 
   FiShare, FiX, FiPlus, FiCheck, FiAward, FiCamera, FiHeart, FiFlag, 
-  FiClock, FiBookmark, FiUsers, FiNavigation, FiMail, FiPhone, FiVideo, FiMap
+  FiClock, FiBookmark, FiUsers, FiNavigation, FiMail, FiPhone, FiVideo, FiMap,
+  FiTrash2, FiLock, FiSave
 } from 'react-icons/fi';
 import { FaPlaneDeparture } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -13,44 +14,36 @@ import OTPVerification from './OTPVerification';
 import MemoryUploadModal from './MemoryUploadModal';
 import Memories from './Memories';
 import MemoryModal from './MemoryModal';
-import { FiTrash2 } from 'react-icons/fi';
 import { BACKEND_URL } from '../config';
 
 export default function Profile({ currentUser, userId, onClose, onMessage }) {
   console.log("Profile component rendering with currentUser:", currentUser);
   console.log("Profile component rendering for userId:", userId);
   
-  const location = useLocation();
-  const [activeTab, setActiveTab] = React.useState('overview');
+  // State variables
+  const [isLoading, setIsLoading] = useState(true);
+  const [profileData, setProfileData] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showTripMemories, setShowTripMemories] = useState(false);
-  const [selectedTripType, setSelectedTripType] = useState('');
+  const [selectedTripType, setSelectedTripType] = useState('posted');
   const [showOTPVerification, setShowOTPVerification] = useState(false);
-  const [otpType, setOTPType] = useState('');
+  const [otpType, setOTPType] = useState('email');
   const [isFollowing, setIsFollowing] = useState(false);
-  const [joinedTripsData, setJoinedTripsData] = useState([]);
-  const [profileData, setProfileData] = useState({
-    fullName: '',
-    location: '',
-    bio: '',
-    avatar: '',
-    phone: '',
-    email: '',
-    travelCategories: [],
-    languages: [],
-    memories: [],
-    trips: []
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [userStats, setUserStats] = useState({
+    tripsHosted: 0,
+    tripsJoined: 0,
+    followers: 0,
+    following: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-  
-  // Add these state variables at the beginning of the component
-  const [userMemories, setUserMemories] = useState([]);
   const [memoryCounts, setMemoryCounts] = useState({
     photos: 0,
     countries: 0,
     cities: 0
   });
+  const [userMemories, setUserMemories] = useState([]);
+  const [joinedTripsData, setJoinedTripsData] = useState([]);
   const [showMemoryUploadModal, setShowMemoryUploadModal] = useState(false);
   const [selectedMemoryFiles, setSelectedMemoryFiles] = useState([]);
   const [randomMemories, setRandomMemories] = useState([]);
@@ -64,26 +57,64 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Add this state variable
-  const [userStats, setUserStats] = useState({
-    tripsHosted: 0,
-    tripsJoined: 0
-  });
-
-  // Add this state variable to track if this is the current user's own profile
-  const [isOwnProfile, setIsOwnProfile] = useState(false);
-
-  // Determine if this is the current user's own profile
-  useEffect(() => {
-    if (currentUser && userId) {
-      // If userId is provided, we're viewing someone else's profile
-      setIsOwnProfile(currentUser.id === userId);
-    } else if (currentUser) {
-      // If no userId is provided, we're viewing our own profile
-      setIsOwnProfile(true);
+  const navigate = useNavigate();
+  
+  // Define handleMemoryClick inside the component
+  const handleMemoryClick = (memory) => {
+    console.log("Memory clicked:", memory);
+    setSelectedMemory(memory);
+    setShowMemoryModal(true);
+  };
+  
+  // Define handleDeleteMemory inside the component
+  const handleDeleteMemory = async (memoryId) => {
+    if (!memoryId) {
+      console.error('No memory ID provided');
+      return;
     }
-  }, [currentUser, userId]);
+    
+    // Only allow deletion for own profile
+    if (!isOwnProfile) {
+      console.error('Cannot delete memories from another user\'s profile');
+      return;
+    }
+    
+    if (window.confirm("Are you sure you want to delete this memory? This action cannot be undone.")) {
+      try {
+        console.log("Deleting memory with ID:", memoryId);
+        const token = localStorage.getItem('authToken');
+        
+        const response = await axios.delete(
+          `${BACKEND_URL}/api/memories/${memoryId}`,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}` 
+            }
+          }
+        );
+        
+        console.log("Delete response:", response);
+        
+        if (response.status === 200) {
+          // Remove the deleted memory from state
+          setUserMemories(prev => prev.filter(memory => memory._id !== memoryId));
+          console.log("Memory deleted successfully");
+          
+          // Trigger a refresh to update counts
+          setRefreshTrigger(prev => prev + 1);
+        } else {
+          console.error("Failed to delete memory with status:", response.status);
+        }
+      } catch (err) {
+        console.error('Error deleting memory:', err);
+        console.error('Memory ID:', memoryId);
+        
+        if (err.response && err.response.status === 401) {
+          alert("Your session has expired. Please log in again.");
+        }
+      }
+    }
+  };
 
   // Add this function to fetch user stats from the leaderboard API
   const fetchUserStats = async () => {
@@ -109,6 +140,31 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
       console.error('Error fetching user stats:', error);
     }
   };
+
+  // Determine if this is the current user's own profile
+  useEffect(() => {
+    if (currentUser && userId) {
+      // If userId is provided, we're viewing someone else's profile
+      const currentUserId = currentUser.id || currentUser._id;
+      const profileUserId = userId;
+      
+      console.log("Checking if own profile:");
+      console.log("Current user ID:", currentUserId);
+      console.log("Profile user ID:", profileUserId);
+      
+      const isOwn = currentUserId === profileUserId;
+      setIsOwnProfile(isOwn);
+      console.log("Is own profile:", isOwn);
+    } else if (currentUser) {
+      // If no userId is provided, we're viewing our own profile
+      console.log("No userId provided, assuming own profile");
+      setIsOwnProfile(true);
+    } else {
+      // If no currentUser, we can't edit anything
+      console.log("No currentUser, cannot edit profile");
+      setIsOwnProfile(false);
+    }
+  }, [currentUser, userId]);
 
   // Call this function when the component mounts
   useEffect(() => {
@@ -237,64 +293,79 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
   // Add this useEffect to fetch memories when the profile loads
   useEffect(() => {
     const fetchUserMemories = async () => {
-      if (userId || (currentUser && currentUser.id)) {
-        try {
-          setIsLoadingMemory(true);
-          const profileId = userId || currentUser.id;
-          console.log("Fetching memories for user:", profileId);
-          const token = localStorage.getItem('authToken');
-          const response = await axios.get(`${BACKEND_URL}/api/memories/${profileId}`, {
-            headers: { Authorization: `Bearer ${token}` }
+      try {
+        setIsLoadingMemory(true);
+        const profileId = userId || (currentUser && (currentUser.id || currentUser._id));
+        
+        if (!profileId) {
+          console.error("No profile ID available to fetch memories");
+          setIsLoadingMemory(false);
+          return;
+        }
+        
+        console.log("Fetching memories for user:", profileId);
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          console.warn("No auth token found, memories might be restricted");
+        }
+        
+        const response = await axios.get(`${BACKEND_URL}/api/memories/${profileId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        
+        console.log("Memories response:", response.data);
+        
+        if (response.data.success) {
+          setUserMemories(response.data.memories || []);
+          
+          // Set a featured memory if we have any
+          if (response.data.memories && response.data.memories.length > 0) {
+            // Pick a random memory to feature
+            const randomIndex = Math.floor(Math.random() * response.data.memories.length);
+            const selectedMemory = response.data.memories[randomIndex];
+            console.log("Selected featured memory:", selectedMemory);
+            setFeaturedMemory(selectedMemory);
+          }
+          
+          // Update memory counts
+          const countries = new Set();
+          const cities = new Set();
+          
+          (response.data.memories || []).forEach(memory => {
+            if (memory.location) {
+              const parts = memory.location.split(',').map(part => part.trim());
+              if (parts.length > 1) {
+                countries.add(parts[parts.length - 1]); // Country
+                cities.add(parts[0]); // City
+              } else if (parts.length === 1) {
+                // If only one part, assume it's a country
+                countries.add(parts[0]);
+              }
+            }
           });
           
-          console.log("Memories response:", response.data);
-          
-          if (response.data.success) {
-            setUserMemories(response.data.memories);
-            
-            // Set a featured memory if we have any
-            if (response.data.memories && response.data.memories.length > 0) {
-              // Pick a random memory to feature
-              const randomIndex = Math.floor(Math.random() * response.data.memories.length);
-              const selectedMemory = response.data.memories[randomIndex];
-              console.log("Selected featured memory:", selectedMemory);
-              setFeaturedMemory(selectedMemory);
-            }
-            
-            // Update memory counts
-            const countries = new Set();
-            const cities = new Set();
-            
-            response.data.memories.forEach(memory => {
-              if (memory.location) {
-                const parts = memory.location.split(',').map(part => part.trim());
-                if (parts.length > 1) {
-                  countries.add(parts[parts.length - 1]); // Country
-                  cities.add(parts[0]); // City
-                } else if (parts.length === 1) {
-                  // If only one part, assume it's a country
-                  countries.add(parts[0]);
-                }
-              }
-            });
-            
-            setMemoryCounts(prev => ({
-              photos: response.data.memories.length,
-              countries: countries.size,
-              cities: cities.size,
-              trips: joinedTripsData.length // Use the joined trips data
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to fetch user memories:', err);
-        } finally {
-          setIsLoadingMemory(false);
+          setMemoryCounts(prev => ({
+            photos: (response.data.memories || []).length,
+            countries: countries.size,
+            cities: cities.size,
+            trips: joinedTripsData.length // Use the joined trips data
+          }));
+        } else {
+          console.error("API returned success: false when fetching memories");
         }
+      } catch (err) {
+        console.error('Failed to fetch user memories:', err);
+      } finally {
+        setIsLoadingMemory(false);
       }
     };
 
-    fetchUserMemories();
-  }, [currentUser, joinedTripsData, refreshTrigger]);
+    // Only fetch memories if we have a user ID
+    if (currentUser || userId) {
+      fetchUserMemories();
+    }
+  }, [currentUser, userId, BACKEND_URL, joinedTripsData, refreshTrigger]);
 
   // Fix the close button functionality
   const handleClose = () => {
@@ -429,7 +500,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
     
     // Update the user data in localStorage to persist across reloads
     if (currentUser && currentUser.id) {
-      const updatedUser = { ...JSON.parse(localStorage.getItem('user')), ...updatedData };
+      const updatedUser = { ...JSON.parse(localStorage.getItem('user') || '{}'), ...updatedData };
       localStorage.setItem('user', JSON.stringify(updatedUser));
     }
     
@@ -443,11 +514,13 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
       })
         .then(response => {
           console.log("Refreshed profile data:", response.data);
-          setProfileData(response.data);
-          
-          // Update localStorage with the fresh data
-          const refreshedUser = { ...JSON.parse(localStorage.getItem('user')), ...response.data };
-          localStorage.setItem('user', JSON.stringify(refreshedUser));
+          if (response.data && response.data.profile) {
+            setProfileData(response.data.profile);
+            
+            // Update localStorage with the fresh data
+            const refreshedUser = { ...JSON.parse(localStorage.getItem('user') || '{}'), ...response.data.profile };
+            localStorage.setItem('user', JSON.stringify(refreshedUser));
+          }
         })
         .catch(err => console.error('Failed to refresh profile data:', err));
     }
@@ -574,31 +647,11 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                     </div>
                   ) : (
                     <>
-                      <button 
-                        onClick={handleFollow} 
-                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${
-                          isFollowing ? 'bg-gray-700 text-white' : 'bg-yellow-500 text-white'
-                        }`}
-                      >
-                        {isFollowing ? (
-                          <>
-                            <FiCheck className="mr-1 w-3 h-3" />
-                            Following
-                          </>
-                        ) : (
-                          <>
-                            <FiPlus className="mr-1 w-3 h-3" />
-                            Follow
-                          </>
-                        )}
-                      </button>
-                      <button 
-                        onClick={() => onMessage && onMessage(profileData)}
-                        className="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center"
-                      >
-                        <FiMessageSquare className="mr-1 w-3 h-3" />
-                        Message
-                      </button>
+                      {/* Removed both Follow and Message buttons */}
+                      <div className="text-gray-200 text-xs flex items-center">
+                        <FiCalendar className="mr-1 w-3 h-3" />
+                        <span>Member since {formatMemberSince(profileData.createdAt || profileData.joinedDate)}</span>
+                      </div>
                     </>
                   )}
                 </div>
@@ -699,6 +752,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                                 className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                                   index === currentMemoryIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
                                 }`}
+                                onClick={() => handleMemoryClick(memory)}
                               >
                                 <img
                                   src={memory.images?.[0] || memory.imageUrl || '/assets/images/paris.webp'}
@@ -711,8 +765,8 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                                   }}
                                 />
                                 
-                                {/* Add delete button */}
-                                {index === currentMemoryIndex && (
+                                {/* Only show delete button for own profile */}
+                                {index === currentMemoryIndex && isOwnProfile && (
                                   <button 
                                     className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-opacity"
                                     onClick={(e) => {
@@ -841,14 +895,17 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                     <div className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-[#204231]">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base sm:text-lg font-cinzel font-semibold text-[#204231]">
-                          My Travel Memories
+                          {isOwnProfile ? "My Travel Memories" : `${profileData.fullName}'s Travel Memories`}
                         </h3>
-                        <button
-                          onClick={() => document.getElementById('memory-upload').click()}
-                          className="bg-[#2c5e4a] hover:bg-[#204231] text-white text-xs px-3 py-1.5 rounded-full flex items-center"
-                        >
-                          <FiPlus className="mr-1 w-3 h-3" /> Add Memory
-                        </button>
+                        {/* Only show Add Memory button for own profile */}
+                        {isOwnProfile && (
+                          <button
+                            onClick={() => document.getElementById('memory-upload').click()}
+                            className="bg-[#2c5e4a] hover:bg-[#204231] text-white text-xs px-3 py-1.5 rounded-full flex items-center"
+                          >
+                            <FiPlus className="mr-1 w-3 h-3" /> Add Memory
+                          </button>
+                        )}
                         <input
                           id="memory-upload"
                           type="file"
@@ -873,26 +930,16 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                             return (
                               <div
                                 key={memoryId}
-                                className="relative aspect-square rounded-md overflow-hidden shadow-sm cursor-pointer transition-shadow"
+                                className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => handleMemoryClick(memory)}
                               >
                                 <img
-                                  src={memory.images?.[0] || memory.imageUrl || '/placeholder-image.jpg'}
+                                  src={memory.images?.[0] || memory.imageUrl || '/assets/images/paris.webp'}
                                   alt={memory.description || "Travel memory"}
                                   className="w-full h-full object-cover"
-                                  onClick={() => {
-                                    const memoryId = memory._id ? String(memory._id) : null;
-                                    if (!memoryId) {
-                                      console.error("Invalid memory ID:", memory);
-                                      return;
-                                    }
-                                    setSelectedMemory(memory);
-                                    setShowMemoryModal(true);
-                                  }}
                                   onError={(e) => {
-                                    console.error("Failed to load memory image:", 
-                                      memory.images?.[0] || memory.imageUrl || 'No image URL');
                                     e.target.onerror = null;
-                                    e.target.src = '/placeholder-image.jpg';
+                                    e.target.src = '/assets/images/paris.webp';
                                   }}
                                 />
                                 <div className="absolute top-1 right-1 flex gap-1">
@@ -901,16 +948,19 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                                       <FiStar className="w-3 h-3 fill-current" />
                                     </div>
                                   )}
-                                  <button 
-                                    className="bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70 transition-opacity"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteMemory(memory._id);
-                                    }}
-                                    title="Delete memory"
-                                  >
-                                    <FiTrash2 className="w-3 h-3" />
-                                  </button>
+                                  {/* Only show delete button for own profile */}
+                                  {isOwnProfile && (
+                                    <button 
+                                      className="bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteMemory(memory._id);
+                                      }}
+                                      title="Delete memory"
+                                    >
+                                      <FiTrash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1224,7 +1274,7 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
             memory={{
               ...selectedMemory,
               // Add user information to the memory object for better context
-              userName: currentUser?.fullName || currentUser?.name,
+              userName: profileData?.fullName || currentUser?.fullName || currentUser?.name,
               userAvatar: profileData?.avatar || currentUser?.avatar // Use profileData avatar as first choice
             }} 
             onClose={() => setShowMemoryModal(false)}
@@ -1238,46 +1288,6 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
     </>
   );
 }
-
-const handleDeleteMemory = async (memoryId) => {
-  if (!memoryId) {
-    console.error('No memory ID provided');
-    return;
-  }
-  
-  if (window.confirm("Are you sure you want to delete this memory? This action cannot be undone.")) {
-    try {
-      console.log("Deleting memory with ID:", memoryId);
-      const token = localStorage.getItem('authToken');
-      
-      const response = await axios.delete(
-        `${BACKEND_URL}/api/memories/${memoryId}`,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}` 
-          }
-        }
-      );
-      
-      console.log("Delete response:", response);
-      
-      if (response.status === 200) {
-        // Remove the deleted memory from state
-        setUserMemories(prev => prev.filter(memory => memory._id !== memoryId));
-        console.log("Memory deleted successfully");
-      } else {
-        console.error("Failed to delete memory with status:", response.status);
-      }
-    } catch (err) {
-      console.error('Error deleting memory:', err);
-      console.error('Memory ID:', memoryId);
-      
-      if (err.response && err.response.status === 401) {
-        alert("Your session has expired. Please log in again.");
-      }
-    }
-  }
-};
 
 const formatMemberSince = (dateString) => {
   if (!dateString) return "Unknown";
@@ -1301,4 +1311,11 @@ const formatJoinedDate = (dateString) => {
     month: 'long',
     year: 'numeric'
   });
+};
+
+// Keep these helper functions outside the component since they don't use component state
+const handleMemoryClick = (memory) => {
+  console.log("Memory clicked:", memory);
+  setSelectedMemory(memory);
+  setShowMemoryModal(true);
 };

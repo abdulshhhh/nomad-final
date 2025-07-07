@@ -15,10 +15,15 @@ const authenticate = (req, res, next) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
     
+    // Log token for debugging (first few characters only)
+    console.log("Authenticating with token:", token.substring(0, 10) + "...");
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = { id: decoded.id, email: decoded.email };
+    console.log("Authentication successful for user:", decoded.id);
     next();
   } catch (error) {
+    console.error("Token verification error:", error.message);
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };

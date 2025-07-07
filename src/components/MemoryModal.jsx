@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiCalendar } from 'react-icons/fi';
+import { FiX, FiChevronLeft, FiChevronRight, FiMapPin, FiCalendar, FiTrash2 } from 'react-icons/fi';
 import '../styles/memoryDetail.css';
 
 const MemoryModal = ({ memory, onClose, currentUser }) => {
