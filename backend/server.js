@@ -7,7 +7,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const Message = require('./models/Message');
 
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 require('./config/passport');
 
 const app = express();
@@ -159,6 +159,13 @@ io.on('connection', (socket) => {
     socket.join(roomName);
     console.log(`User ${userId} joined room ${roomName}`);
     socket.to(roomName).emit('userJoined', { userId, message: 'joined the chat' });
+  });
+
+  // Handle trip room joining for participant updates
+  socket.on('joinTripRoom', (tripId) => {
+    const roomName = `trip_${tripId}`;
+    socket.join(roomName);
+    console.log(`Socket ${socket.id} joined trip room ${roomName} for participant updates`);
   });
 
   socket.on('sendMessage', async (data) => {

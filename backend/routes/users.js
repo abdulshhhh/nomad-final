@@ -48,25 +48,52 @@ router.delete('/:id', authenticate, async (req, res) => {
 router.get('/:userId/profile', async (req, res) => {
   try {
     const userId = req.params.userId;
-    
+    console.log(`🔍 Users API: Looking for user with ID: ${userId}`);
+
+    // Validate ObjectId format
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log(`❌ Invalid ObjectId format: ${userId}`);
+      return res.status(400).json({ success: false, message: 'Invalid user ID format' });
+    }
+
     // Find user by ID
     const user = await User.findById(userId);
-    
+
     if (!user) {
+      console.log(`❌ User not found for ID: ${userId}`);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+
+    console.log(`✅ Found user for profile request: ${user.fullName || user.name} (${userId})`);
+    console.log(`📊 User data: coins=${user.coins}, level=${user.level}, title=${user.title}, totalTrips=${user.totalTrips}`);
     
-    // Return user profile with avatar
+    // Return user profile with comprehensive data
     return res.json({
       _id: user._id,
-      name: user.name,
+      name: user.fullName || user.name || "User",
+      fullName: user.fullName || user.name || "User",
       avatar: user.avatar,
-      // Add other non-sensitive profile fields
+      email: user.email, // Include email for profile display
+      phone: user.phone,
       joinedDate: user.createdAt,
-      // Don't include sensitive information like email, password, etc.
+      memberSince: user.createdAt,
+      // Leaderboard data
+      coins: user.coins || 0,
+      level: user.level || 1,
+      title: user.title || "New Traveler",
+      tripsHosted: user.tripsHosted || 0,
+      tripsJoined: user.tripsJoined || 0,
+      totalTrips: user.totalTrips || 0,
+      countries: user.countries || [],
+      countriesCount: user.countriesCount || 0,
+      achievements: user.achievements || [],
+      experience: user.experience || 0,
+      lastActive: user.lastActive,
+      verified: false // Default for privacy
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error(`Error fetching user profile for ${userId}:`, error);
+    console.error('Error details:', error.message);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });

@@ -169,10 +169,55 @@ router.post('/', authenticate, async (req, res) => {
             tripDestination: trip.destination
           });
         }
-      } catch (coinError) {
-        console.error('Error updating coins for joining trip:', coinError);
-        // Don't fail the trip joining if coin update fails
+
+        // 🚀 EMIT REAL-TIME PARTICIPANT UPDATE
+      if (io) {
+        // Get user details for the participant update
+        const User = require('../models/User');
+        const userDetails = await User.findById(userId).select('fullName email avatar name');
+
+        const participantData = {
+          id: userId,
+          _id: userId,
+          name: userDetails?.fullName || userDetails?.name || 'Anonymous User',
+          fullName: userDetails?.fullName || userDetails?.name || 'Anonymous User',
+          email: userDetails?.email || '',
+          avatar: userDetails?.avatar || "/assets/images/Alexrivera.jpeg",
+          joinedDate: new Date(),
+          joinedAt: new Date(),
+          memberSince: userDetails?.createdAt || new Date(),
+          createdAt: userDetails?.createdAt || new Date(),
+          role: 'participant',
+          isHost: false,
+          bio: userDetails?.bio || '',
+          location: userDetails?.location || '',
+          phone: userDetails?.phone || '',
+          verified: userDetails?.verified || false,
+          level: userDetails?.level || 1,
+          coins: userDetails?.coins || 0,
+          tripsCompleted: userDetails?.tripsCompleted || 0
+        };
+
+        console.log('Emitting participantJoined event:', { tripId, participant: participantData });
+
+        // Emit to all clients in the trip room
+        io.to(`trip_${tripId}`).emit('participantJoined', {
+          tripId: tripId,
+          participant: participantData,
+          message: `${participantData.name} joined the trip!`
+        });
+
+        // Also emit general update
+        io.emit('tripParticipantUpdate', {
+          tripId: tripId,
+          action: 'joined',
+          participant: participantData
+        });
       }
+    } catch (coinError) {
+      console.error('Error updating coins for joining trip:', coinError);
+      // Don't fail the trip joining if coin update fails
+    }
 
       // Create notification for the user who joined
       await createNotification(

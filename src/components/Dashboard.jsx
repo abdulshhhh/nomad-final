@@ -40,7 +40,154 @@ import { GiTrophy } from "react-icons/gi";
 import axios from "axios";
 import { useTrips } from "../context/TripsContext";
 
+// 🖼️ CENTRALIZED IMAGE MANAGEMENT
+const ImageAssets = {
+  // Default fallbacks
+  DEFAULT_AVATAR: "/assets/images/default-avatar.webp",
+  DEFAULT_TRIP: "/assets/images/default-trip.jpg",
+  LOGO: "/assets/images/NomadNovalogo.jpg",
+
+  // User avatars (verified to exist)
+  AVATARS: {
+    ALEX: "/assets/images/Alexrivera.jpeg",
+    LISA: "/assets/images/lisazhang.jpeg",
+    AHMED: "/assets/images/ahmedhassen.jpeg",
+    CARLOS: "/assets/images/carlosrodriguez.jpeg",
+    DAVID: "/assets/images/davidpark.jpeg",
+    EMMA: "/assets/images/emmawilson.jpeg",
+    JORDAN: "/assets/images/jordankim.jpeg",
+    MAYA: "/assets/images/mayapatel.jpeg",
+    MIKE: "/assets/images/mikejohnson.jpeg",
+    NINA: "/assets/images/ninakowalski.jpeg",
+    SARA: "/assets/images/sarachen.jpeg",
+    SOPHIE: "/assets/images/sophiachen.jpeg"
+  },
+
+  // Destination images (verified to exist)
+  DESTINATIONS: {
+    PARIS: "/assets/images/paris.webp",
+    NEW_YORK: "/assets/images/newyork.jpeg",
+    DUBAI: "/assets/images/dubai.jpeg",
+    LONDON: "/assets/images/london.jpeg",
+    TOKYO: "/assets/images/Tokyo.jpeg",
+    BALI: "/assets/images/baliadventure.jpeg",
+    ICELAND: "/assets/images/icelandnorthernlights.jpeg",
+    SANTORINI: "/assets/images/santorinisunset.jpeg",
+    SWITZERLAND: "/assets/images/swissmount.jpeg"
+  },
+
+  // Trip images (verified to exist)
+  TRIPS: {
+    BALI_ADVENTURE: "/assets/images/baliadventure.jpeg",
+    TOKYO_EXPLORER: "/assets/images/Tokyo.jpeg",
+    ICELAND_LIGHTS: "/assets/images/icelandnorthernlights.jpeg",
+    SANTORINI_SUNSET: "/assets/images/santorinisunset.jpeg",
+    SWISS_ALPS: "/assets/images/swissmount.jpeg",
+    NYC_SKYLINE: "/assets/images/NYCSkyline.jpeg",
+    ALPINE_VIEWS: "/assets/images/AlpineViews.jpeg",
+    BALI_BEACH: "/assets/images/BaliBeach.jpeg",
+    MOUNTAIN_ADVENTURE: "/assets/images/MountainAdventure.jpeg",
+    SAFARI_EXPERIENCE: "/assets/images/SafariExperience.jpeg",
+    EUROPEAN_BACKPACKING: "/assets/images/EuropeanBackpacking.jpeg"
+  }
+};
+
+// 🛡️ SAFE IMAGE LOADER WITH FALLBACKS
+const getSafeImageUrl = (imagePath, fallbackType = 'DEFAULT_TRIP') => {
+  if (!imagePath) {
+    return ImageAssets[fallbackType] || ImageAssets.DEFAULT_TRIP;
+  }
+
+  // If it's already a data URL or absolute URL, return as is
+  if (imagePath.startsWith('data:') || imagePath.startsWith('http')) {
+    return imagePath;
+  }
+
+  // If it's a relative path, ensure it starts with /
+  if (!imagePath.startsWith('/')) {
+    imagePath = `/${imagePath}`;
+  }
+
+  return imagePath;
+};
+
+// 🎭 AVATAR URL HANDLER WITH MULTIPLE FALLBACK STRATEGIES
+const getReliableAvatarUrl = (user, index = 0) => {
+  if (!user) return ImageAssets.DEFAULT_AVATAR;
+
+  const userId = user.id || user._id;
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+  // Strategy 1: Use provided avatar if it's a valid URL
+  if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:'))) {
+    return user.avatar;
+  }
+
+  // Strategy 2: Use provided avatar as relative path
+  if (user.avatar && user.avatar.startsWith('/assets/')) {
+    return user.avatar;
+  }
+
+  // Strategy 3: Try backend avatar endpoint if we have userId
+  if (userId) {
+    return `${BACKEND_URL}/api/users/${userId}/avatar`;
+  }
+
+  // Strategy 4: Use a rotating default avatar based on index
+  const avatarKeys = Object.keys(ImageAssets.AVATARS);
+  const selectedAvatar = ImageAssets.AVATARS[avatarKeys[index % avatarKeys.length]];
+
+  return selectedAvatar || ImageAssets.DEFAULT_AVATAR;
+};
+
 // Using real-time database data only - no mock data
+
+// 🕒 REAL-TIME TIME FORMATTING UTILITIES
+const getTimeAgo = (dateString) => {
+  if (!dateString) return 'Just now';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Just now';
+
+  const now = new Date();
+  const diffInMs = now - date;
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+  if (diffInDays === 1) return 'Yesterday';
+  if (diffInDays < 7) return `${diffInDays} days ago`;
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
+
+const getFormattedJoinTime = (dateString) => {
+  if (!dateString) return { date: 'Today', time: 'Just now' };
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return { date: 'Today', time: 'Just now' };
+
+  const formattedDate = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+  });
+
+  const formattedTime = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  return { date: formattedDate, time: formattedTime };
+};
 
 // 🚀 REAL-TIME COMPLETED TRIPS ONLY - No dummy data needed
 
@@ -52,7 +199,7 @@ const testimonials = [
     rating: 5,
     comment:
       "Amazing experience! Met incredible people and saw breathtaking places.",
-    avatar: "/assets/images/Alexrivera.jpeg",
+    avatar: ImageAssets.AVATARS.ALEX,
   },
   {
     id: 2,
@@ -61,7 +208,7 @@ const testimonials = [
     rating: 5,
     comment:
       "Perfect organization and wonderful travel companions. Highly recommend!",
-    avatar: "/assets/images/lisazhang.jpeg",
+    avatar: ImageAssets.AVATARS.LISA,
   },
 ];
 
@@ -71,28 +218,28 @@ const popularDestinations = [
     name: "Paris, France",
     country: "France",
     visits: "2.3k",
-    image: "/assets/images/paris.webp",
+    image: ImageAssets.DESTINATIONS.PARIS,
   },
   {
     id: 2,
     name: "New York, USA",
     country: "USA",
     visits: "1.8k",
-    image: "/assets/images/newyork.jpeg",
+    image: ImageAssets.DESTINATIONS.NEW_YORK,
   },
   {
     id: 3,
     name: "Dubai, UAE",
     country: "UAE",
     visits: "1.5k",
-    image: "/assets/images/dubai.jpeg",
+    image: ImageAssets.DESTINATIONS.DUBAI,
   },
   {
     id: 4,
     name: "London, UK",
     country: "UK",
     visits: "1.2k",
-    image: "/assets/images/london.jpeg",
+    image: ImageAssets.DESTINATIONS.LONDON,
   },
 ];
 
@@ -104,7 +251,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       id: 1,
       title: "Iceland Northern Lights",
       destination: "Reykjavik, Iceland",
-      image: "/assets/images/icelandnorthernlights.jpeg",
+      image: ImageAssets.TRIPS.ICELAND_LIGHTS,
       rating: 4.9,
       participants: 8,
       date: "December 2024",
@@ -113,7 +260,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       id: 2,
       title: "Santorini Sunset",
       destination: "Santorini, Greece",
-      image: "/assets/images/santorinisunset.jpeg",
+      image: ImageAssets.TRIPS.SANTORINI_SUNSET,
       rating: "N/A",
       participants: 6,
       date: "October 2024",
@@ -126,7 +273,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     name: 'Development User',
     fullName: 'Development User',
     email: 'dev@example.com',
-    avatar: '/assets/images/default-avatar.webp'
+    avatar: ImageAssets.DEFAULT_AVATAR
   };
 
   console.log('Dashboard currentUser:', currentUser);
@@ -355,7 +502,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
               name: effectiveUser.fullName,
               fullName: effectiveUser.fullName,
               email: effectiveUser.email,
-              avatar: effectiveUser.avatar || "/assets/images/default-avatar.jpg",
+              avatar: effectiveUser.avatar || ImageAssets.DEFAULT_AVATAR,
               joinedAt: new Date().toISOString(),
               joinedDate: new Date().toISOString(),
               memberSince: effectiveUser.createdAt || new Date().toISOString(),
@@ -554,7 +701,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             spots: trip.maxPeople - (trip.numberOfPeople || 0), // Available spots
             maxSpots: trip.maxPeople,
             currentParticipants: trip.numberOfPeople || 0, // Current joined count
-            image: trip.coverImage || "/assets/images/default-trip.jpeg",
+            image: trip.coverImage || ImageAssets.DEFAULT_TRIP,
             description: trip.description || "Experience the journey of a lifetime with fellow travelers.",
             category: trip.category,
             genderPreference: trip.genderPreference,
@@ -562,7 +709,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             organizer: trip.createdBy?.fullName || "Unknown",
             organizerId: creatorId, // Use consistent creator ID
             createdBy: creatorId,   // Add this for backup reference
-            organizerAvatar: trip.createdBy?.avatar || "/assets/images/default-avatar.jpg",
+            organizerAvatar: trip.createdBy?.avatar || ImageAssets.DEFAULT_AVATAR,
             tags: [trip.category, trip.transport],
             joinedMembers: trip.joinedMembers || [],
             departure: trip.departure,
@@ -939,29 +1086,73 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
   // --- VIEW MEMBER PROFILE HANDLER ---
   const handleViewMemberProfile = async (member) => {
     try {
-      // Fetch the complete profile if we don't have it already
+      console.log('🔍 PROFILE NAVIGATION TRIGGERED');
+      console.log('🔍 Member object:', member);
+      console.log('🔍 Member object keys:', Object.keys(member));
+      console.log('🔍 Member.id:', member.id);
+      console.log('🔍 Member._id:', member._id);
+      console.log('🔍 Member.userId:', member.userId);
+      console.log('🔍 Member.name:', member.name);
+      console.log('🔍 Member.email:', member.email);
+      console.log('🔍 Member.role:', member.role);
+
+      // Get the target user ID with multiple fallback strategies
+      const targetUserId = member.id || member._id || member.userId;
+      const currentUserId = effectiveUser?.id || effectiveUser?._id;
+
+      console.log('🎯 Target User ID:', targetUserId);
+      console.log('👤 Current User ID:', currentUserId);
+      console.log('🔍 Target User ID Type:', typeof targetUserId);
+      console.log('🔍 Target User ID String:', String(targetUserId));
+
+      // Enhanced validation with detailed error reporting
+      if (!targetUserId) {
+        console.error('❌ CRITICAL ERROR: No target user ID found for member');
+        console.error('❌ Member object:', member);
+        console.error('❌ Available member fields:', Object.keys(member));
+        console.error('❌ Member.id:', member.id);
+        console.error('❌ Member._id:', member._id);
+        console.error('❌ Member.userId:', member.userId);
+
+        alert(`❌ Unable to view profile: User ID not found\n\nAvailable fields: ${Object.keys(member).join(', ')}\n\nPlease check the console for more details.`);
+        return;
+      }
+
+      console.log('✅ Profile navigation validation passed');
+      console.log('✅ Proceeding to fetch profile for user ID:', targetUserId);
+
+      // Check if this is the current user (optional: you might want to allow this)
+      const isOwnProfile = String(targetUserId) === String(currentUserId);
+      console.log('🔄 Is own profile:', isOwnProfile);
+
+      // Fetch the complete profile using the target user ID
       let completeProfile = member;
-      
-      if (member.id || member._id) {
-        const token = localStorage.getItem('authToken');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        
-        try {
-          const response = await axios.get(`http://localhost:5000/api/profile/${member.id || member._id}`, { headers });
-          
-          if (response.data && response.data.success && response.data.profile) {
-            completeProfile = {
-              ...member,
-              ...response.data.profile,
-              // Ensure these fields are always available
-              name: response.data.profile.fullName || response.data.profile.name || member.name,
-              fullName: response.data.profile.fullName || response.data.profile.name || member.name,
-              avatar: response.data.profile.avatar || member.avatar
-            };
-          }
-        } catch (err) {
-          console.error(`Failed to fetch complete profile for member ${member.id || member._id}:`, err);
+
+      const token = localStorage.getItem('authToken');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      try {
+        console.log(`📡 Fetching profile for user ID: ${targetUserId}`);
+        const response = await axios.get(`http://localhost:5000/api/profile/${targetUserId}`, { headers });
+
+        if (response.data && response.data.success && response.data.profile) {
+          completeProfile = {
+            ...member,
+            ...response.data.profile,
+            // Ensure these fields are always available with the target user's data
+            id: targetUserId,
+            _id: targetUserId,
+            name: response.data.profile.fullName || response.data.profile.name || member.name,
+            fullName: response.data.profile.fullName || response.data.profile.name || member.name,
+            avatar: response.data.profile.avatar || member.avatar
+          };
+          console.log('✅ Successfully fetched profile:', completeProfile);
+        } else {
+          console.log('⚠️ Profile API response not in expected format:', response.data);
         }
+      } catch (err) {
+        console.error(`❌ Failed to fetch complete profile for member ${targetUserId}:`, err);
+        // Continue with the member data we have
       }
       
       // Ensure avatar URL is properly formatted
@@ -975,12 +1166,13 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         }
       }
       
-      // Format the member data with all required properties
+      // Format the member data with all required properties, ensuring we use the target user's ID
       const formattedMember = {
-        id: completeProfile.id || completeProfile._id,
+        id: targetUserId, // Always use the target user ID
+        _id: targetUserId, // Always use the target user ID
         name: completeProfile.name || completeProfile.fullName,
         fullName: completeProfile.fullName || completeProfile.name,
-        avatar: avatarUrl || "/assets/images/default-avatar.webp",
+        avatar: avatarUrl || getReliableAvatarUrl(completeProfile),
         email: completeProfile.email || "traveler@example.com",
         bio: completeProfile.bio || "Passionate traveler and adventure seeker.",
         location: completeProfile.location || "Traveler",
@@ -988,33 +1180,87 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
         role: completeProfile.role || "member",
         verified: completeProfile.verified || true,
         joinedDate: completeProfile.joinedDate,
+        memberSince: completeProfile.createdAt || completeProfile.memberSince,
         level: completeProfile.level || 1,
         coins: completeProfile.coins || 0,
         tripsCompleted: completeProfile.tripsCompleted || 0,
+        isOwnProfile: isOwnProfile, // Flag to indicate if this is the current user's profile
         // Add photos array which might be required by the Profile component
         photos: [
-          avatarUrl || "/assets/images/default-avatar.webp",
-          "/assets/images/baliadventure.jpeg",
-          "/assets/images/Tokyo.jpeg",
-          "/assets/images/swissmount.jpeg",
-          "/assets/images/icelandnorthernlights.jpeg",
-          "/assets/images/santorinisunset.jpeg"
+          avatarUrl || getReliableAvatarUrl(completeProfile),
+          ImageAssets.TRIPS.BALI_ADVENTURE,
+          ImageAssets.TRIPS.TOKYO_EXPLORER,
+          ImageAssets.TRIPS.SWISS_ALPS,
+          ImageAssets.TRIPS.ICELAND_LIGHTS,
+          ImageAssets.TRIPS.SANTORINI_SUNSET
         ]
       };
 
-      console.log("Viewing member profile:", formattedMember);
+      console.log("✅ Formatted member profile for viewing:", formattedMember);
+      console.log("🎯 Profile belongs to user ID:", formattedMember.id);
+
       setSelectedMember(formattedMember);
       setShowMemberProfile(true);
     } catch (error) {
-      console.error('Error viewing member profile:', error);
-      // Show a basic profile even if there's an error
-      setSelectedMember({
+      console.error('❌ Error viewing member profile:', error);
+
+      // Show a basic profile even if there's an error, but ensure we use the correct user ID
+      const targetUserId = member.id || member._id;
+      const fallbackProfile = {
         ...member,
-        avatar: member.avatar || "/assets/images/default-avatar.webp",
+        id: targetUserId,
+        _id: targetUserId,
+        avatar: getReliableAvatarUrl(member),
         bio: "Passionate traveler and adventure seeker.",
-        photos: [member.avatar || "/assets/images/default-avatar.webp"]
-      });
+        location: "Traveler",
+        photos: [
+          getReliableAvatarUrl(member),
+          ImageAssets.TRIPS.BALI_ADVENTURE,
+          ImageAssets.TRIPS.TOKYO_EXPLORER
+        ]
+      };
+
+      console.log('⚠️ Using fallback profile:', fallbackProfile);
+      setSelectedMember(fallbackProfile);
       setShowMemberProfile(true);
+    }
+  };
+
+  // 🔄 REAL-TIME TRIP STATISTICS REFRESH
+  const refreshTripStatistics = async (tripId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/trips/statistics/${tripId}`);
+      if (response.data && response.data.success) {
+        const stats = response.data.statistics;
+
+        // Update trips list with new statistics
+        setTrips(prevTrips => prevTrips.map(trip => {
+          if (trip._id === tripId) {
+            return {
+              ...trip,
+              participantCount: stats.participantCount || 0,
+              joinedCount: stats.joinedCount || 0
+            };
+          }
+          return trip;
+        }));
+
+        // Update upcoming trips list with new statistics
+        setUpcomingTrips(prevTrips => prevTrips.map(trip => {
+          if (trip._id === tripId) {
+            return {
+              ...trip,
+              participantCount: stats.participantCount || 0,
+              joinedCount: stats.joinedCount || 0
+            };
+          }
+          return trip;
+        }));
+
+        console.log('✅ Trip statistics refreshed for trip:', tripId, stats);
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing trip statistics:', error);
     }
   };
 
@@ -1078,8 +1324,53 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
       });
 
       if (response.data.success) {
+        console.log('🔍 Initial trip participants data:', response.data.participants);
+
+        // Ensure each participant has proper ID fields
+        const processedParticipants = response.data.participants.map(participant => {
+          console.log('🔍 RAW INITIAL PARTICIPANT DATA:', participant);
+        console.log('🔍 Initial participant keys:', Object.keys(participant));
+        console.log('🔍 Initial participant.id:', participant.id);
+        console.log('🔍 Initial participant._id:', participant._id);
+        console.log('🔍 Initial participant.name:', participant.name);
+        console.log('🔍 Initial participant.email:', participant.email);
+        console.log('🔍 Initial participant.role:', participant.role);
+
+        // Ensure we have a valid user ID
+        const userId = participant.id || participant._id || participant.userId;
+        if (!userId) {
+          console.error('❌ CRITICAL: No user ID found for initial participant:', participant);
+          console.error('❌ Available fields:', Object.keys(participant));
+        }
+
+        const processedParticipant = {
+          ...participant,
+          // Ensure ID fields are present with fallbacks
+          id: userId,
+          _id: userId,
+          userId: userId, // Add userId field as backup
+          // Ensure name fields are present
+          name: participant.name || participant.fullName || 'Unknown User',
+          fullName: participant.fullName || participant.name || 'Unknown User',
+          // Ensure email is present
+          email: participant.email || 'no-email@example.com',
+          // Add click handler identifier
+          clickable: true,
+          profileNavigationReady: !!userId
+        };
+
+        console.log('✅ PROCESSED INITIAL PARTICIPANT:', processedParticipant);
+        console.log('✅ Initial final ID:', processedParticipant.id);
+        console.log('✅ Initial final _id:', processedParticipant._id);
+        console.log('✅ Initial Profile Navigation Ready:', processedParticipant.profileNavigationReady);
+
+        return processedParticipant;
+        });
+
+        console.log('✅ Processed initial participants:', processedParticipants);
+
         setManagedTrip(response.data.trip);
-        setTripParticipants(response.data.participants);
+        setTripParticipants(processedParticipants);
         setShowTripManagement(true);
 
         // 🚀 SET UP REAL-TIME PARTICIPANT UPDATES
@@ -1090,7 +1381,26 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
           // Listen for new participants joining
           socket.on('participantJoined', (data) => {
             if (data.tripId === tripId) {
-              setTripParticipants(prev => [...prev, data.participant]);
+              // Update trip participants with proper timestamp
+              setTripParticipants(prev => {
+                const existingIndex = prev.findIndex(p =>
+                  (p.id && p.id === data.participant.id) ||
+                  (p._id && p._id === data.participant._id)
+                );
+
+                if (existingIndex === -1) {
+                  const newParticipant = {
+                    ...data.participant,
+                    joinedAt: new Date().toISOString(),
+                    joinedDate: new Date(),
+                    memberSince: data.participant.createdAt || new Date(),
+                    isRecentJoin: true // Mark as recent join for UI highlighting
+                  };
+                  return [...prev, newParticipant];
+                }
+                return prev;
+              });
+
               setNotifications((prev) => [
                 {
                   id: Date.now(),
@@ -1614,6 +1924,66 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     socketConnection.on('disconnect', () => {
       console.log('Disconnected from real-time server');
       setIsConnected(false);
+    });
+
+    // 🔄 GLOBAL REAL-TIME TRIP PARTICIPANT UPDATES
+    socketConnection.on('participantJoined', (data) => {
+      console.log('🔄 Global participant joined update:', data);
+
+      // Update main trips list
+      setTrips(prevTrips => prevTrips.map(trip => {
+        if (trip._id === data.tripId) {
+          const currentCount = trip.participantCount || 0;
+          return {
+            ...trip,
+            participantCount: currentCount + 1,
+            participants: [...(trip.participants || []), data.participant]
+          };
+        }
+        return trip;
+      }));
+
+      // Update upcoming trips list
+      setUpcomingTrips(prevTrips => prevTrips.map(trip => {
+        if (trip._id === data.tripId) {
+          const currentCount = trip.participantCount || 0;
+          return {
+            ...trip,
+            participantCount: currentCount + 1,
+            participants: [...(trip.participants || []), data.participant]
+          };
+        }
+        return trip;
+      }));
+
+      // Refresh trip statistics to ensure accuracy
+      refreshTripStatistics(data.tripId);
+    });
+
+    // 🔄 GLOBAL REAL-TIME TRIP UPDATES
+    socketConnection.on('tripParticipantUpdate', (data) => {
+      console.log('🔄 Global trip participant update:', data);
+
+      if (data.action === 'joined') {
+        // Update both trips and upcoming trips
+        const updateTrip = (trip) => {
+          if (trip._id === data.tripId) {
+            const currentCount = trip.participantCount || 0;
+            return {
+              ...trip,
+              participantCount: currentCount + 1,
+              participants: [...(trip.participants || []), data.participant]
+            };
+          }
+          return trip;
+        };
+
+        setTrips(prevTrips => prevTrips.map(updateTrip));
+        setUpcomingTrips(prevTrips => prevTrips.map(updateTrip));
+
+        // Refresh trip statistics to ensure accuracy
+        refreshTripStatistics(data.tripId);
+      }
     });
 
     // Listen for new trips
@@ -2150,7 +2520,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
               <div className="flex items-center relative">
                 <div className="flex items-center">
                   <img
-                    src="/assets/images/NomadNovalogo.jpg"
+                    src={ImageAssets.LOGO}
                     alt="NomadNova Logo"
                     className="w-12 h-12 rounded-full mr-3"
                   />
@@ -2223,12 +2593,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 >
                   <div className="relative w-10 h-10">
                     <img
-                    src={profileData?.avatar || effectiveUser.avatar || "/assets/images/default-avatar.webp"}
+                    src={getReliableAvatarUrl(profileData || effectiveUser)}
                     alt="Profile"
                     className="w-10 h-10 rounded-full border-2 border-[#f8d56b] object-cover"
                     onError={(e) => {
-                      if (!e.target.src.endsWith("/assets/images/default-avatar.webp")) {
-                        e.target.src = "/assets/images/default-avatar.webp";
+                      if (!e.target.src.endsWith(ImageAssets.DEFAULT_AVATAR)) {
+                        e.target.src = ImageAssets.DEFAULT_AVATAR;
                       }
                       }}
                       />
@@ -2686,12 +3056,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                 >
                   <div className="relative">
                     <img
-                      src={trip.image || trip.coverImage || "/assets/images/default-trip.jpeg"}
+                      src={getSafeImageUrl(trip.image || trip.coverImage, 'DEFAULT_TRIP')}
                       alt={trip.title}
                       className="w-full h-40 sm:h-48 object-cover"
                       onError={(e) => {
                         console.log('🖼️ Image failed to load for trip:', trip.title, 'Original src:', e.target.src);
-                        e.target.src = "/assets/images/default-trip.jpeg";
+                        e.target.src = ImageAssets.DEFAULT_TRIP;
                       }}
                     />
                     <div className="absolute top-4 right-4">
@@ -2808,7 +3178,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                       const tripForModal = {
                         ...trip,
                         title: trip.title || trip.destination,
-                        image: trip.image || trip.coverImage || '/assets/images/default-trip.jpeg',
+                        image: getSafeImageUrl(trip.image || trip.coverImage, 'DEFAULT_TRIP'),
                         organizer: trip.organizer || 'Unknown',
                         organizerId: trip.organizerId || trip.createdBy,
                         spots: trip.spots || (trip.maxPeople - trip.numberOfPeople),
@@ -2837,12 +3207,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                     }}
                   >
                     <img
-                      src={trip.image || trip.coverImage || '/assets/images/default-trip.jpeg'}
+                      src={getSafeImageUrl(trip.image || trip.coverImage, 'DEFAULT_TRIP')}
                       alt={trip.title || trip.destination}
                       className="w-full h-40 object-cover"
                       onError={(e) => {
                         console.log('🖼️ Upcoming trip image failed to load:', trip.title, 'Original src:', e.target.src);
-                        e.target.src = '/assets/images/default-trip.jpeg';
+                        e.target.src = ImageAssets.DEFAULT_TRIP;
                       }}
                     />
                     <div className="p-4">
@@ -2901,9 +3271,12 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="relative h-64 rounded-xl overflow-hidden">
                         <img
-                          src={selectedTrip.image}
+                          src={getSafeImageUrl(selectedTrip.image, 'DEFAULT_TRIP')}
                           alt={selectedTrip.title}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = ImageAssets.DEFAULT_TRIP;
+                          }}
                         />
                         <div className="absolute top-4 right-4">
                           <span className="bg-gradient-to-r from-[#f8a95d] to-[#f87c6d] text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
@@ -3455,7 +3828,52 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                   });
 
                                   if (response.data.success) {
-                                    setTripParticipants(response.data.participants);
+                                    console.log('🔍 Raw participants data from API:', response.data.participants);
+
+                                    // Ensure each participant has proper ID fields
+                                    const processedParticipants = response.data.participants.map(participant => {
+                                      console.log('🔍 RAW PARTICIPANT DATA:', participant);
+                                    console.log('🔍 Participant keys:', Object.keys(participant));
+                                    console.log('🔍 Participant.id:', participant.id);
+                                    console.log('🔍 Participant._id:', participant._id);
+                                    console.log('🔍 Participant.name:', participant.name);
+                                    console.log('🔍 Participant.email:', participant.email);
+                                    console.log('🔍 Participant.role:', participant.role);
+
+                                    // Ensure we have a valid user ID
+                                    const userId = participant.id || participant._id || participant.userId;
+                                    if (!userId) {
+                                      console.error('❌ CRITICAL: No user ID found for participant:', participant);
+                                      console.error('❌ Available fields:', Object.keys(participant));
+                                    }
+
+                                    const processedParticipant = {
+                                      ...participant,
+                                      // Ensure ID fields are present with fallbacks
+                                      id: userId,
+                                      _id: userId,
+                                      userId: userId, // Add userId field as backup
+                                      // Ensure name fields are present
+                                      name: participant.name || participant.fullName || 'Unknown User',
+                                      fullName: participant.fullName || participant.name || 'Unknown User',
+                                      // Ensure email is present
+                                      email: participant.email || 'no-email@example.com',
+                                      // Add click handler identifier
+                                      clickable: true,
+                                      profileNavigationReady: !!userId
+                                    };
+
+                                    console.log('✅ PROCESSED PARTICIPANT:', processedParticipant);
+                                    console.log('✅ Final ID:', processedParticipant.id);
+                                    console.log('✅ Final _id:', processedParticipant._id);
+                                    console.log('✅ Profile Navigation Ready:', processedParticipant.profileNavigationReady);
+
+                                    return processedParticipant;
+                                    });
+
+                                    console.log('✅ Processed participants:', processedParticipants);
+                                    setTripParticipants(processedParticipants);
+
                                     setNotifications((prev) => [
                                       {
                                         id: Date.now(),
@@ -3503,19 +3921,34 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                 return dateB - dateA; // Sort by most recent first
                               })
                               .map((participant, index) => {
-                                // Safely parse dates with fallbacks
-                                const joinedDateStr = participant.joinedDate || participant.createdAt || participant.joinedAt;
+                                // 🔍 VALIDATE PARTICIPANT DATA BEFORE RENDERING
+                                console.log(`🔍 RENDERING PARTICIPANT ${index + 1}:`, participant);
+                                console.log(`🔍 Participant ${index + 1} ID:`, participant.id);
+                                console.log(`🔍 Participant ${index + 1} _ID:`, participant._id);
+                                console.log(`🔍 Participant ${index + 1} Name:`, participant.name);
+                                console.log(`🔍 Participant ${index + 1} Email:`, participant.email);
+                                console.log(`🔍 Participant ${index + 1} Profile Ready:`, participant.profileNavigationReady);
+
+                                if (!participant.profileNavigationReady) {
+                                  console.warn(`⚠️ Participant ${index + 1} not ready for profile navigation:`, participant);
+                                }
+                                // 🕒 REAL-TIME DATE PROCESSING WITH ENHANCED FALLBACKS
+                                const joinedDateStr = participant.joinedAt || participant.joinedDate || participant.createdAt;
                                 const memberSinceStr = participant.memberSince || participant.createdAt;
 
-                                const joinedDate = joinedDateStr ? new Date(joinedDateStr) : new Date();
-                                const memberSince = memberSinceStr ? new Date(memberSinceStr) : new Date();
+                                // Use real-time formatting functions
+                                const timeAgo = getTimeAgo(joinedDateStr);
+                                const { date: joinedDate, time: joinedTime } = getFormattedJoinTime(joinedDateStr);
 
-                                // Validate dates and provide fallbacks
-                                const validJoinedDate = isNaN(joinedDate.getTime()) ? new Date() : joinedDate;
-                                const validMemberSince = isNaN(memberSince.getTime()) ? new Date() : memberSince;
+                                // Calculate if this is a recent join (within last hour for real-time feel)
+                                const joinDate = joinedDateStr ? new Date(joinedDateStr) : new Date();
+                                const isValidDate = !isNaN(joinDate.getTime());
+                                const minutesSinceJoined = isValidDate ? Math.floor((new Date() - joinDate) / (1000 * 60)) : 0;
+                                const isRecentJoin = participant.isRecentJoin || minutesSinceJoined <= 60; // Recent if within last hour
 
-                                const daysSinceJoined = Math.floor((new Date() - validJoinedDate) / (1000 * 60 * 60 * 24));
-                                const isRecentJoin = daysSinceJoined <= 1;
+                                // Process member since date
+                                const memberSinceDate = memberSinceStr ? new Date(memberSinceStr) : new Date();
+                                const validMemberSince = !isNaN(memberSinceDate.getTime()) ? memberSinceDate : new Date();
 
                                 return (
                                   <div
@@ -3525,15 +3958,29 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                         ? 'bg-gradient-to-r from-green-50 to-[#f8f4e3] border-green-200 shadow-md'
                                         : 'bg-[#f8f4e3] border-[#d1c7b7]'
                                     }`}
-                                    onClick={() => handleViewMemberProfile(participant)}
+                                    onClick={() => {
+                                      console.log('🖱️ PARTICIPANT CLICKED:', participant);
+                                      console.log('🖱️ Click handler triggered for:', participant.name);
+                                      console.log('🖱️ Participant ID:', participant.id);
+                                      console.log('🖱️ Participant _ID:', participant._id);
+                                      console.log('🖱️ Participant ready for navigation:', participant.profileNavigationReady);
+
+                                      if (!participant.profileNavigationReady) {
+                                        console.error('❌ Participant not ready for profile navigation:', participant);
+                                        alert(`❌ Profile navigation not available for ${participant.name}\n\nUser ID missing or invalid.`);
+                                        return;
+                                      }
+
+                                      handleViewMemberProfile(participant);
+                                    }}
                                   >
                                     <div className="relative">
                                       <img
-                                        src={participant.avatar || "/assets/images/Alexrivera.jpeg"}
-                                        alt={participant.name}
+                                        src={getReliableAvatarUrl(participant, index)}
+                                        alt={participant.fullName || participant.name || 'User'}
                                         className="w-12 h-12 rounded-full border-2 border-[#f8d56b] object-cover"
                                         onError={(e) => {
-                                          e.target.src = "/assets/images/Alexrivera.jpeg";
+                                          e.target.src = ImageAssets.DEFAULT_AVATAR;
                                         }}
                                       />
                                       {isRecentJoin && (
@@ -3544,7 +3991,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center space-x-2">
-                                        <h5 className="font-medium text-[#2c5e4a]">{participant.name}</h5>
+                                        <h5 className="font-medium text-[#2c5e4a]">{participant.fullName || participant.name || 'Anonymous User'}</h5>
                                         {index === 0 && (
                                           <span className="text-xs bg-[#f8d56b] text-[#2c5e4a] px-2 py-1 rounded-full font-medium">
                                             Latest
@@ -3561,23 +4008,13 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                         <div className="flex items-center space-x-1">
                                           <FiCalendar className="w-3 h-3 text-[#5E5854]" />
                                           <span className="text-xs text-[#5E5854]">
-                                            {validJoinedDate.toLocaleDateString('en-US', {
-                                              month: 'short',
-                                              day: 'numeric',
-                                              year: validJoinedDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                                            })} at {validJoinedDate.toLocaleTimeString('en-US', {
-                                              hour: '2-digit',
-                                              minute: '2-digit',
-                                              hour12: true
-                                            })}
+                                            {joinedDate} at {joinedTime}
                                           </span>
                                         </div>
                                         <div className="flex items-center space-x-1">
                                           <FiClock className="w-3 h-3 text-[#5E5854]" />
                                           <span className="text-xs text-[#5E5854]">
-                                            {daysSinceJoined === 0 ? 'Today' :
-                                             daysSinceJoined === 1 ? 'Yesterday' :
-                                             `${daysSinceJoined} days ago`}
+                                            {timeAgo}
                                           </span>
                                         </div>
                                       </div>
@@ -3669,12 +4106,12 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                   >
                     <div className="relative h-48 sm:h-64">
                       <img
-                        src={trip.coverImage || "/assets/images/default-trip.jpeg"}
+                        src={getSafeImageUrl(trip.coverImage || trip.image, 'DEFAULT_TRIP')}
                         alt={trip.destination}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           console.log('🖼️ Completed trip image failed to load:', trip.destination, 'Original src:', e.target.src);
-                          e.target.src = "/assets/images/default-trip.jpeg";
+                          e.target.src = ImageAssets.DEFAULT_TRIP;
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4 sm:p-6">
@@ -3750,9 +4187,12 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                 >
                   <div className="flex items-center mb-4">
                     <img
-                      src={testimonial.avatar}
+                      src={getSafeImageUrl(testimonial.avatar, 'DEFAULT_AVATAR')}
                       alt={testimonial.name}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#f8d56b] mr-3 sm:mr-4"
+                      onError={(e) => {
+                        e.target.src = ImageAssets.DEFAULT_AVATAR;
+                      }}
                     />
                     <div>
                       <h4 className="font-bold text-[#2c5e4a]">
@@ -3793,12 +4233,12 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                   className="relative rounded-xl overflow-hidden h-40 sm:h-56 group cursor-pointer"
                   onClick={() => handleDestinationClick(destination)}
                 >
-                  <img 
-                    src={destination.image} 
-                    alt={destination.name} 
+                  <img
+                    src={getSafeImageUrl(destination.image, 'DEFAULT_TRIP')}
+                    alt={destination.name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => {
-                      e.target.src = "/assets/images/default-trip.jpeg";
+                      e.target.src = ImageAssets.DEFAULT_TRIP;
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col justify-end p-3 sm:p-4">

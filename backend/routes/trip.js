@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Trip = require('../models/Trip');
+const JoinedTrip = require('../models/JoinedTrip');
 const { createNotification } = require('./notification');
 
 // Get Socket.IO instance from app
@@ -224,32 +225,89 @@ router.get('/:tripId/participants', async (req, res) => {
     // }
 
     // Get all joined trips for this trip
-    const JoinedTrip = require('../models/JoinedTrip');
     const User = require('../models/User');
 
     const joinedTrips = await JoinedTrip.find({ tripId: tripId })
-      .populate('userId', 'fullName email avatar createdAt bio location phone verified level coins tripsCompleted');
+      .populate({
+        path: 'userId',
+        select: 'fullName email avatar createdAt bio location phone verified level coins tripsCompleted name',
+        model: 'User'
+      });
 
-    const participants = joinedTrips.map(joinedTrip => ({
-      id: joinedTrip.userId._id,
-      _id: joinedTrip.userId._id,
-      name: joinedTrip.userId.fullName,
-      fullName: joinedTrip.userId.fullName,
-      email: joinedTrip.userId.email,
-      avatar: joinedTrip.userId.avatar,
-      joinedDate: joinedTrip.createdAt,
-      joinedAt: joinedTrip.createdAt,
-      memberSince: joinedTrip.userId.createdAt,
-      createdAt: joinedTrip.userId.createdAt,
-      // Add additional profile fields if available
-      bio: joinedTrip.userId.bio,
-      location: joinedTrip.userId.location,
-      phone: joinedTrip.userId.phone,
-      verified: joinedTrip.userId.verified || false,
-      level: joinedTrip.userId.level || 1,
-      coins: joinedTrip.userId.coins || 0,
-      tripsCompleted: joinedTrip.userId.tripsCompleted || 0
-    }));
+    console.log(`Found ${joinedTrips.length} joined trip records for trip ${tripId}`);
+
+    // Create participants array starting with organizer as host
+    const participants = [];
+
+    // Add organizer as host first
+    if (trip.createdBy) {
+      const hostName = trip.createdBy.fullName || trip.createdBy.name || 'Trip Organizer';
+      participants.push({
+        id: trip.createdBy._id,
+        _id: trip.createdBy._id,
+        name: hostName,
+        fullName: hostName,
+        email: trip.createdBy.email,
+        avatar: trip.createdBy.avatar || "/assets/images/Alexrivera.jpeg",
+        joinedDate: trip.createdAt,
+        joinedAt: trip.createdAt,
+        memberSince: trip.createdBy.createdAt || trip.createdAt,
+        createdAt: trip.createdBy.createdAt || trip.createdAt,
+        role: 'host',
+        isHost: true,
+        bio: trip.createdBy.bio || '',
+        location: trip.createdBy.location || '',
+        phone: trip.createdBy.phone || '',
+        verified: trip.createdBy.verified || false,
+        level: trip.createdBy.level || 1,
+        coins: trip.createdBy.coins || 0,
+        tripsCompleted: trip.createdBy.tripsCompleted || 0
+      });
+    }
+
+    // Add other participants (excluding organizer if they also joined)
+    joinedTrips.forEach((joinedTrip, index) => {
+      console.log(`Processing joined trip ${index + 1}:`, {
+        hasUserId: !!joinedTrip.userId,
+        userId: joinedTrip.userId?._id,
+        userFullName: joinedTrip.userId?.fullName,
+        userName: joinedTrip.userId?.name,
+        userEmail: joinedTrip.userId?.email
+      });
+
+      if (joinedTrip.userId && joinedTrip.userId._id && (!trip.createdBy || joinedTrip.userId._id.toString() !== trip.createdBy._id.toString())) {
+        const participantName = joinedTrip.userId.fullName || joinedTrip.userId.name || 'Anonymous User';
+        participants.push({
+          id: joinedTrip.userId._id,
+          _id: joinedTrip.userId._id,
+          name: participantName,
+          fullName: participantName,
+          email: joinedTrip.userId.email,
+          avatar: joinedTrip.userId.avatar || "/assets/images/Alexrivera.jpeg",
+          joinedDate: joinedTrip.createdAt,
+          joinedAt: joinedTrip.createdAt,
+          memberSince: joinedTrip.userId.createdAt,
+          createdAt: joinedTrip.userId.createdAt,
+          role: 'participant',
+          isHost: false,
+          bio: joinedTrip.userId.bio || '',
+          location: joinedTrip.userId.location || '',
+          phone: joinedTrip.userId.phone || '',
+          verified: joinedTrip.userId.verified || false,
+          level: joinedTrip.userId.level || 1,
+          coins: joinedTrip.userId.coins || 0,
+          tripsCompleted: joinedTrip.userId.tripsCompleted || 0
+        });
+      } else {
+        console.log(`Skipping joined trip ${index + 1}:`, {
+          reason: !joinedTrip.userId ? 'No userId' :
+                  !joinedTrip.userId._id ? 'No userId._id' :
+                  'Is organizer (already added as host)'
+        });
+      }
+    });
+
+    console.log(`Returning ${participants.length} participants:`, participants.map(p => ({ name: p.name, email: p.email, role: p.role || 'participant' })));
 
     res.json({
       success: true,
@@ -262,7 +320,11 @@ router.get('/:tripId/participants', async (req, res) => {
         maxPeople: trip.maxPeople,
         currentParticipants: participants.length
       },
-      participants: participants
+      participants: participants,
+      host: participants.find(p => p.isHost),
+      regularParticipants: participants.filter(p => !p.isHost),
+      totalParticipants: participants.length,
+      spotsLeft: Math.max(0, (trip.maxPeople || 10) - participants.length)
     });
 
   } catch (error) {

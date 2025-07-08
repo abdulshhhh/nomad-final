@@ -58,6 +58,43 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
+
+  // Add this function to fetch complete profile data including avatar
+  const fetchCompleteProfileData = async (userId) => {
+    if (!userId) {
+      console.warn('No userId provided to fetchCompleteProfileData');
+      return null;
+    }
+
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    console.log(`🔍 Fetching complete profile for user ID: ${userId}`);
+
+    try {
+      // Try profile API first
+      const profileResponse = await axios.get(`${BACKEND_URL}/api/profile/${userId}`, { headers });
+      if (profileResponse.data) {
+        console.log('✅ Profile API returned data:', profileResponse.data);
+        return profileResponse.data;
+      }
+    } catch (profileErr) {
+      console.log('Profile API failed, trying leaderboard API:', profileErr.message);
+
+      try {
+        // Try leaderboard API as fallback
+        const leaderboardResponse = await axios.get(`${BACKEND_URL}/api/leaderboard/profile/${userId}`, { headers });
+        if (leaderboardResponse.data && leaderboardResponse.data.success) {
+          console.log('✅ Leaderboard API returned data:', leaderboardResponse.data.profile);
+          return leaderboardResponse.data.profile;
+        }
+      } catch (leaderboardErr) {
+        console.log('Leaderboard API also failed:', leaderboardErr.message);
+      }
+    }
+
+    return null;
+  };
   
   // Define handleMemoryClick inside the component
   const handleMemoryClick = (memory) => {
@@ -259,35 +296,109 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
         });
         
         console.log("Profile data received:", response.data);
-        
+
         if (response.data.success && response.data.profile) {
+          console.log("Setting profile data from Profile API:", response.data.profile);
           setProfileData(response.data.profile);
         } else {
+          console.error("Invalid profile data structure:", response.data);
           throw new Error("Invalid profile data received");
         }
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
         
         // If we get a 404, it means the profile doesn't exist yet
-        // Let's create a default profile for this user
+        // Try to fetch complete profile data using the robust fetchCompleteProfileData function
         if (err.response && err.response.status === 404) {
-          try {
-            // Use the default profile endpoint to get a template
-            const defaultResponse = await axios.get(`${BACKEND_URL}/api/default-profile`, {
-              params: { name: currentUser?.fullName || currentUser?.name || "New User" }
+          const targetProfileId = userId || (currentUser && (currentUser.id || currentUser._id));
+          console.log("Profile not found, trying fetchCompleteProfileData for user:", targetProfileId);
+
+          const completeProfileData = await fetchCompleteProfileData(targetProfileId);
+
+          if (completeProfileData) {
+            console.log("✅ Successfully fetched complete profile data:", completeProfileData);
+
+            // Use the complete profile data
+            const joinDate = completeProfileData.joinedDate ? new Date(completeProfileData.joinedDate) :
+                           completeProfileData.memberSince ? new Date(completeProfileData.memberSince) : new Date();
+
+            setProfileData({
+              id: completeProfileData.id || completeProfileData._id || targetProfileId,
+              _id: completeProfileData._id || completeProfileData.id || targetProfileId,
+              fullName: completeProfileData.fullName || completeProfileData.name || "User",
+              name: completeProfileData.fullName || completeProfileData.name || "User",
+              avatar: completeProfileData.avatar || "/assets/images/default-avatar.webp",
+              bio: completeProfileData.bio || "Passionate traveler and adventure seeker.",
+              location: completeProfileData.location || `${completeProfileData.countriesCount || 0} countries explored`,
+              phone: completeProfileData.phone || "+1 (555) 123-4567",
+              email: completeProfileData.email || "private@example.com",
+              joinedDate: joinDate,
+              memberSince: joinDate,
+              travelCategories: completeProfileData.travelCategories || ["Adventure", "Culture"],
+              languages: completeProfileData.languages || ["English"],
+              level: completeProfileData.level || 1,
+              coins: completeProfileData.coins || 0,
+              tripsCompleted: completeProfileData.tripsCompleted || completeProfileData.totalTrips || 0,
+              tripsHosted: completeProfileData.tripsHosted || 0,
+              tripsJoined: completeProfileData.tripsJoined || 0,
+              title: completeProfileData.title || "New Traveler",
+              countries: completeProfileData.countries || [],
+              countriesCount: completeProfileData.countriesCount || 0,
+              achievements: completeProfileData.achievements || [],
+              experience: completeProfileData.experience || 0,
+              verified: completeProfileData.verified || false,
+              photos: [
+                completeProfileData.avatar || "/assets/images/default-avatar.webp",
+                "/assets/images/baliadventure.jpeg",
+                "/assets/images/Tokyo.jpeg"
+              ]
             });
-            
-            if (defaultResponse.data && defaultResponse.data.profile) {
-              console.log("Using default profile template");
-              setProfileData({
-                ...defaultResponse.data.profile,
-                ...currentUser,
-                id: currentUser?.id || currentUser?._id,
-                _id: currentUser?._id || currentUser?.id
-              });
-            }
-          } catch (defaultErr) {
-            console.error("Failed to get default profile:", defaultErr);
+
+            console.log("✅ Profile data set from fetchCompleteProfileData with real user data:", {
+              name: completeProfileData.fullName || completeProfileData.name,
+              level: completeProfileData.level,
+              coins: completeProfileData.coins,
+              tripsCompleted: completeProfileData.tripsCompleted || completeProfileData.totalTrips,
+              title: completeProfileData.title
+            });
+            return; // Exit early since we found user data
+          } else {
+            console.log("❌ fetchCompleteProfileData returned null, creating basic profile");
+
+            // Create a basic profile with the user ID and minimal data
+            setProfileData({
+              id: targetProfileId,
+              _id: targetProfileId,
+              fullName: "User",
+              name: "User",
+              avatar: "/assets/images/default-avatar.webp",
+              bio: "Passionate traveler and adventure seeker.",
+              location: "Explorer",
+              phone: "+1 (555) 123-4567",
+              email: "private@example.com",
+              joinedDate: new Date(),
+              memberSince: new Date(),
+              travelCategories: ["Adventure"],
+              languages: ["English"],
+              level: 1,
+              coins: 0,
+              tripsCompleted: 0,
+              tripsHosted: 0,
+              tripsJoined: 0,
+              title: "New Traveler",
+              countries: [],
+              countriesCount: 0,
+              achievements: [],
+              experience: 0,
+              verified: false,
+              photos: [
+                "/assets/images/default-avatar.webp",
+                "/assets/images/baliadventure.jpeg",
+                "/assets/images/Tokyo.jpeg"
+              ]
+            });
+
+            console.log("✅ Created basic profile for user:", targetProfileId);
           }
         }
         
@@ -306,7 +417,11 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
           });
         }
       } finally {
-        setIsLoading(false); // Always set loading to false when done
+        try {
+          setIsLoading(false); // Always set loading to false when done
+        } catch (finalErr) {
+          console.error("Error setting loading state:", finalErr);
+        }
       }
     };
 
@@ -444,11 +559,8 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
       console.log("Current user ID:", currentUser.id);
       console.log("Profile user ID:", profileData.id);
       console.log("Profile userId:", profileData.userId);
-      console.log("Should show edit button:", 
-        currentUser.id === profileData.id || 
-        currentUser.id === profileData.userId ||
-        true // Force it to show for debugging
-      );
+      const shouldShowEditButton = currentUser.id === profileData.id || currentUser.id === profileData.userId;
+      console.log("Should show edit button:", shouldShowEditButton);
     }
   }, [currentUser, profileData]);
 
@@ -467,10 +579,11 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
   };
 
   const handleShare = () => {
+    const userName = profileData?.fullName || profileData?.name || 'User';
     if (navigator.share) {
       navigator.share({
-        title: `${profileData.fullName}'s Profile - NomadNova`,
-        text: `Check out ${profileData.fullName}'s travel profile on NomadNova!`,
+        title: `${userName}'s Profile - NomadNova`,
+        text: `Check out ${userName}'s travel profile on NomadNova!`,
         url: window.location.href
       });
     } else {
@@ -592,6 +705,14 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
               <div className="text-center">
                 <div className="w-16 h-16 border-4 border-[#2c5e4a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-[#2c5e4a] font-medium">Loading profile...</p>
+              </div>
+            </div>
+          ) : !profileData ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-red-600 text-6xl mb-4">⚠️</div>
+                <p className="text-red-600 font-medium">Profile data not available</p>
+                <p className="text-gray-600 text-sm mt-2">Please try refreshing the page</p>
               </div>
             </div>
           ) : (
