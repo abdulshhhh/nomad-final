@@ -3136,35 +3136,19 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                     <div className="bg-white p-4 rounded-xl border border-[#d1c7b7] mb-6">
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="font-bold text-[#2c5e4a]">
-                          Trip Members
+                          Trip Organizer
                         </h4>
-                        <div className="flex items-center space-x-2">
-                          {tripMembers.length > 0 && (
-                            <span className="text-xs text-[#5E5854] bg-[#f8f4e3] px-2 py-1 rounded">
-                              {tripMembers.length} Total
-                            </span>
-                          )}
-                          <button
-                            onClick={() => handleViewAllMembers(selectedTrip)}
-                            className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
-                          >
-                            View All
-                          </button>
-                        </div>
                       </div>
 
                       {loadingTripDetails ? (
                         <div className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7] text-center">
-                          <p className="text-[#5E5854] text-sm">Loading trip members...</p>
+                          <p className="text-[#5E5854] text-sm">Loading trip organizer...</p>
                         </div>
-                      ) : tripMembers.length > 0 ? (
+                      ) : (
                         <>
                           {/* Organizer */}
                           {tripMembers.filter(member => member.role === 'organizer').map((organizer) => (
                             <div key={organizer.id || 'organizer'} className="mb-4">
-                              <p className="text-[#5E5854] mb-2 text-sm">
-                                Organizer:
-                              </p>
                               <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
                                 <img
                                   src={organizer.avatar || "/assets/images/default-avatar.webp"}
@@ -3172,18 +3156,8 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                                   className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                                   onClick={() => handleViewMemberProfile(organizer)}
                                   onError={(e) => {
-                                    console.log("Avatar load failed, trying direct API endpoint");
-                                    e.target.onerror = null; // Prevent infinite loop
-                                    
-                                    // Try direct API endpoint as fallback
-                                    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-                                    const organizerId = organizer.id || organizer._id;
-                                    
-                                    if (organizerId) {
-                                      e.target.src = `${BACKEND_URL}/api/users/${organizerId}/avatar`;
-                                    } else {
-                                      e.target.src = "/assets/images/default-avatar.webp";
-                                    }
+                                    e.target.onerror = null;
+                                    e.target.src = "/assets/images/default-avatar.webp";
                                   }}
                                 />
                                 <div className="flex-1">
@@ -3198,153 +3172,6 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                               </div>
                             </div>
                           ))}
-
-                          {/* Members Preview (showing only a few) */}
-                          <div>
-                            <p className="text-[#5E5854] mb-2 text-sm">
-                              Members ({tripMembers.filter(member => member.role === 'member').length}):
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {tripMembers
-                                .filter(member => member.role === 'member')
-                                .slice(0, 4)
-                                .map((member) => (
-                                  <div
-                                    key={member.id || `member-${member.name}`}
-                                    className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
-                                  >
-                                    <img
-                                      src={getReliableAvatarUrl(member)}
-                                      alt={member.name || "Member"}
-                                      className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                      onClick={() => handleViewMemberProfile(member)}
-                                      onError={(e) => {
-                                        console.log("Avatar load failed, using default");
-                                        e.target.onerror = null; // Prevent infinite loop
-                                        e.target.src = "/assets/images/default-avatar.webp";
-                                      }}
-                                    />
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2">
-                                        <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
-                                            onClick={() => handleViewMemberProfile(member)}>
-                                          {member.name}
-                                        </h5>
-                                      </div>
-                                      <p className="text-xs text-[#5E5854]">
-                                        Joined {new Date(member.joinedDate || Date.now()).toLocaleDateString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                            {tripMembers.filter(member => member.role === 'member').length > 4 && (
-                              <div className="mt-3 text-center">
-                                <button
-                                  onClick={() => handleViewAllMembers(selectedTrip)}
-                                  className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
-                                >
-                                  + {tripMembers.filter(member => member.role === 'member').length - 4} more members
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Fallback when no trip members are available */}
-                          {tripMembers.length === 0 && !loadingTripDetails && (
-                            <div className="mb-4">
-                              <p className="text-[#5E5854] mb-2 text-sm">
-                                Organizer:
-                              </p>
-                              <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
-                                <img
-                                  src={selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp"}
-                                  alt={selectedTrip.organizer || "Trip Organizer"}
-                                  className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                  onClick={() =>
-                                    handleViewMemberProfile({
-                                      id: selectedTrip.organizerId || "organizer_id",
-                                      name: selectedTrip.organizer || "Trip Organizer",
-                                      avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp",
-                                      role: "organizer",
-                                    })
-                                  }
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = "/assets/images/default-avatar.webp";
-                                  }}
-                                />
-                                <div>
-                                  <h5 className="font-medium text-[#2c5e4a] cursor-pointer"
-                                      onClick={() =>
-                                        handleViewMemberProfile({
-                                          id: selectedTrip.organizerId || "organizer_id",
-                                          name: selectedTrip.organizer || "Trip Organizer",
-                                          avatar: selectedTrip.organizerAvatar || "/assets/images/default-avatar.webp",
-                                          role: "organizer",
-                                        })
-                                      }>
-                                    {selectedTrip.organizer || "Trip Organizer"}
-                                  </h5>
-                                  <p className="text-xs text-[#5E5854]">Trip Creator</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div>
-                            <p className="text-[#5E5854] mb-2 text-sm">
-                              Members ({selectedTrip.joinedMembers?.length || 0}):
-                            </p>
-                            {selectedTrip.joinedMembers && selectedTrip.joinedMembers.length > 0 ? (
-                              <>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  {selectedTrip.joinedMembers
-                                    .slice(0, 4)
-                                    .map((member) => (
-                                      <div
-                                        key={member.id}
-                                        className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]"
-                                      >
-                                        <img
-                                          src={member.avatar || "/assets/images/default-avatar.jpg"}
-                                          alt={member.name}
-                                          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                          onClick={() => handleViewMemberProfile(member)}
-                                        />
-                                        <div>
-                                          <h5 className="font-medium text-[#2c5e4a] cursor-pointer"
-                                              onClick={() => handleViewMemberProfile(member)}>
-                                            {member.name}
-                                          </h5>
-                                          <p className="text-xs text-[#5E5854]">
-                                            Joined {member.joinedDate}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                                {selectedTrip.joinedMembers.length > 4 && (
-                                  <div className="mt-3 text-center">
-                                    <button
-                                      onClick={() => handleViewAllMembers(selectedTrip)}
-                                      className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
-                                    >
-                                      + {selectedTrip.joinedMembers.length - 4} more members
-                                    </button>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7] text-center">
-                                <p className="text-[#5E5854] text-sm">
-                                  No members have joined this trip yet. Be the first to join!
-                                </p>
-                              </div>
-                            )}
-                          </div>
                         </>
                       )}
                     </div>
