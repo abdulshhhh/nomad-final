@@ -351,10 +351,22 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
             userId: effectiveUser.id || effectiveUser._id,
             participant: {
               id: effectiveUser.id || effectiveUser._id,
+              _id: effectiveUser.id || effectiveUser._id,
               name: effectiveUser.fullName,
+              fullName: effectiveUser.fullName,
               email: effectiveUser.email,
               avatar: effectiveUser.avatar || "/assets/images/default-avatar.jpg",
-              joinedAt: new Date().toISOString()
+              joinedAt: new Date().toISOString(),
+              joinedDate: new Date().toISOString(),
+              memberSince: effectiveUser.createdAt || new Date().toISOString(),
+              createdAt: effectiveUser.createdAt || new Date().toISOString(),
+              bio: effectiveUser.bio,
+              location: effectiveUser.location,
+              phone: effectiveUser.phone,
+              verified: effectiveUser.verified || false,
+              level: effectiveUser.level || 1,
+              coins: effectiveUser.coins || 0,
+              tripsCompleted: effectiveUser.tripsCompleted || 0
             }
           });
         }
@@ -3485,21 +3497,35 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                         ) : (
                           <div className="space-y-3 max-h-96 overflow-y-auto">
                             {tripParticipants
-                              .sort((a, b) => new Date(b.joinedDate) - new Date(a.joinedDate)) // Sort by most recent first
+                              .sort((a, b) => {
+                                const dateA = new Date(a.joinedDate || a.createdAt || Date.now());
+                                const dateB = new Date(b.joinedDate || b.createdAt || Date.now());
+                                return dateB - dateA; // Sort by most recent first
+                              })
                               .map((participant, index) => {
-                                const joinedDate = new Date(participant.joinedDate);
-                                const memberSince = new Date(participant.memberSince);
-                                const daysSinceJoined = Math.floor((new Date() - joinedDate) / (1000 * 60 * 60 * 24));
+                                // Safely parse dates with fallbacks
+                                const joinedDateStr = participant.joinedDate || participant.createdAt || participant.joinedAt;
+                                const memberSinceStr = participant.memberSince || participant.createdAt;
+
+                                const joinedDate = joinedDateStr ? new Date(joinedDateStr) : new Date();
+                                const memberSince = memberSinceStr ? new Date(memberSinceStr) : new Date();
+
+                                // Validate dates and provide fallbacks
+                                const validJoinedDate = isNaN(joinedDate.getTime()) ? new Date() : joinedDate;
+                                const validMemberSince = isNaN(memberSince.getTime()) ? new Date() : memberSince;
+
+                                const daysSinceJoined = Math.floor((new Date() - validJoinedDate) / (1000 * 60 * 60 * 24));
                                 const isRecentJoin = daysSinceJoined <= 1;
 
                                 return (
                                   <div
-                                    key={participant.id}
-                                    className={`flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 ${
+                                    key={participant.id || participant._id || index}
+                                    className={`flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 cursor-pointer hover:shadow-lg ${
                                       isRecentJoin
                                         ? 'bg-gradient-to-r from-green-50 to-[#f8f4e3] border-green-200 shadow-md'
                                         : 'bg-[#f8f4e3] border-[#d1c7b7]'
                                     }`}
+                                    onClick={() => handleViewMemberProfile(participant)}
                                   >
                                     <div className="relative">
                                       <img
@@ -3535,11 +3561,11 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                         <div className="flex items-center space-x-1">
                                           <FiCalendar className="w-3 h-3 text-[#5E5854]" />
                                           <span className="text-xs text-[#5E5854]">
-                                            {joinedDate.toLocaleDateString('en-US', {
+                                            {validJoinedDate.toLocaleDateString('en-US', {
                                               month: 'short',
                                               day: 'numeric',
-                                              year: joinedDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                                            })} at {joinedDate.toLocaleTimeString('en-US', {
+                                              year: validJoinedDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                                            })} at {validJoinedDate.toLocaleTimeString('en-US', {
                                               hour: '2-digit',
                                               minute: '2-digit',
                                               hour12: true
@@ -3559,7 +3585,7 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
                                     <div className="text-right">
                                       <div className="space-y-1">
                                         <span className="text-xs text-[#5E5854] bg-white px-2 py-1 rounded-full block">
-                                          Member since {memberSince.getFullYear()}
+                                          Member since {validMemberSince.getFullYear()}
                                         </span>
                                         <span className="text-xs text-[#2c5e4a] font-medium">
                                           #{index + 1}

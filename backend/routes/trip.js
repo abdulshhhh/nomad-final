@@ -228,15 +228,27 @@ router.get('/:tripId/participants', async (req, res) => {
     const User = require('../models/User');
 
     const joinedTrips = await JoinedTrip.find({ tripId: tripId })
-      .populate('userId', 'fullName email avatar createdAt');
+      .populate('userId', 'fullName email avatar createdAt bio location phone verified level coins tripsCompleted');
 
     const participants = joinedTrips.map(joinedTrip => ({
       id: joinedTrip.userId._id,
+      _id: joinedTrip.userId._id,
       name: joinedTrip.userId.fullName,
+      fullName: joinedTrip.userId.fullName,
       email: joinedTrip.userId.email,
       avatar: joinedTrip.userId.avatar,
       joinedDate: joinedTrip.createdAt,
-      memberSince: joinedTrip.userId.createdAt
+      joinedAt: joinedTrip.createdAt,
+      memberSince: joinedTrip.userId.createdAt,
+      createdAt: joinedTrip.userId.createdAt,
+      // Add additional profile fields if available
+      bio: joinedTrip.userId.bio,
+      location: joinedTrip.userId.location,
+      phone: joinedTrip.userId.phone,
+      verified: joinedTrip.userId.verified || false,
+      level: joinedTrip.userId.level || 1,
+      coins: joinedTrip.userId.coins || 0,
+      tripsCompleted: joinedTrip.userId.tripsCompleted || 0
     }));
 
     res.json({
