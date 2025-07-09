@@ -295,24 +295,8 @@ export default function MemberProfiles({ trip, onStartChat }) {
                   className="w-16 h-16 rounded-full object-cover border-3 border-[#f8d56b] mx-auto"
                   onError={(e) => {
                     console.error("Failed to load avatar:", e.target.src);
-                    
-                    // Try different strategies if the first one fails
-                    if (!e.target.src.includes("default-avatar")) {
-                      e.target.onerror = null; // Prevent infinite error loop
-                      
-                      // Try strategy 1: Direct backend URL
-                      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-                      const memberId = member.id || member._id;
-                      
-                      if (memberId) {
-                        console.log("Trying direct profile image URL:", `${BACKEND_URL}/api/users/${memberId}/avatar`);
-                        e.target.src = `${BACKEND_URL}/api/users/${memberId}/avatar`;
-                        return;
-                      }
-                      
-                      // If that fails, use the default avatar
-                      e.target.src = "/assets/images/default-avatar.webp";
-                    }
+                    e.target.onerror = null; // Prevent infinite error loop
+                    e.target.src = "/assets/images/default-avatar.webp";
                   }}
                 />
                 {member.role === 'organizer' && (
@@ -357,24 +341,8 @@ export default function MemberProfiles({ trip, onStartChat }) {
                 className="w-20 h-20 rounded-full object-cover border-3 border-[#f8d56b]"
                 onError={(e) => {
                   console.error("Failed to load avatar in modal:", e.target.src);
-                  
-                  // Try different strategies if the first one fails
-                  if (!e.target.src.includes("default-avatar")) {
-                    e.target.onerror = null; // Prevent infinite error loop
-                    
-                    // Try strategy 1: Direct backend URL
-                    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-                    const memberId = selectedMember.id || selectedMember._id;
-                    
-                    if (memberId) {
-                      console.log("Trying direct profile image URL in modal:", `${BACKEND_URL}/api/users/${memberId}/avatar`);
-                      e.target.src = `${BACKEND_URL}/api/users/${memberId}/avatar`;
-                      return;
-                    }
-                    
-                    // If that fails, use the default avatar
-                    e.target.src = "/assets/images/default-avatar.webp";
-                  }
+                  e.target.onerror = null; // Prevent infinite error loop
+                  e.target.src = "/assets/images/default-avatar.webp";
                 }}
               />
               <div>
