@@ -4229,46 +4229,15 @@ Export by: ${effectiveUser.fullName} (${effectiveUser.email})
               Chronicles of Nomads
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              {testimonials.map((testimonial) => (
-                <div
-                  key={testimonial.id}
-                  className="bg-white rounded-2xl p-4 sm:p-6 border border-[#d1c7b7] shadow-lg"
-                >
-                  <div className="flex items-center mb-4">
-                    <img
-                      src={getSafeImageUrl(testimonial.avatar, 'DEFAULT_AVATAR')}
-                      alt={testimonial.name}
-                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[#f8d56b] mr-3 sm:mr-4"
-                      onError={(e) => {
-                        e.target.src = ImageAssets.DEFAULT_AVATAR;
-                      }}
-                    />
-                    <div>
-                      <h4 className="font-bold text-[#2c5e4a]">
-                        {testimonial.name}
-                      </h4>
-                      <p className="text-[#5E5854] text-xs sm:text-sm">
-                        {testimonial.trip}
-                      </p>
-                    </div>
+              <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#d1c7b7] shadow-lg">
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <FiStar className="mx-auto text-gray-400 w-10 h-10 mb-2" />
+                    <p className="text-gray-600 font-medium">Yet to be rated</p>
+                    <p className="text-gray-500 text-sm mt-1">No testimonials have been submitted yet</p>
                   </div>
-                  <div className="flex mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <FiStar
-                        key={i}
-                        className={`${
-                          i < testimonial.rating
-                            ? "text-[#f8d56b] fill-[#f8d56b]"
-                            : "text-gray-300"
-                        } w-4 h-4 sm:w-5 sm:h-5`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[#5E5854] text-sm sm:text-base">
-                    {testimonial.comment}
-                  </p>
                 </div>
-              ))}
+              </div>
             </div>
           </section>
 
