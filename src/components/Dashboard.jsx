@@ -3565,49 +3565,38 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                               <h5 className="font-medium text-[#5E5854] mb-2">
                                 Participants ({tripMembers.filter(member => member.role !== 'organizer').length})
                               </h5>
-                              {tripMembers.filter(member => member.role !== 'organizer')
-                                .slice(0, 3)
-                                .map((participant) => (
-                                  <div key={participant.id || `participant-${participant._id}`} className="mb-2">
-                                    <div className="flex items-center bg-white p-3 rounded-lg border border-[#d1c7b7]">
-                                      <img
-                                        src={participant.avatar || "/assets/images/default-avatar.webp"}
-                                        alt={participant.name || "Participant"}
-                                        className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
-                                        onClick={() => handleViewMemberProfile(participant)}
-                                        onError={(e) => {
-                                          e.target.onerror = null;
-                                          e.target.src = "/assets/images/default-avatar.webp";
-                                        }}
-                                      />
-                                      <div className="flex-1">
-                                        <div className="flex items-center space-x-2">
-                                          <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
-                                              onClick={() => handleViewMemberProfile(participant)}>
-                                            {participant.name || participant.fullName || "Participant"}
-                                          </h5>
+                              <div className="max-h-60 overflow-y-auto pr-1">
+                                {tripMembers.filter(member => member.role !== 'organizer')
+                                  .map((participant) => (
+                                    <div key={participant.id || `participant-${participant._id}`} className="mb-2">
+                                      <div className="flex items-center bg-white p-3 rounded-lg border border-[#d1c7b7]">
+                                        <img
+                                          src={participant.avatar || "/assets/images/default-avatar.webp"}
+                                          alt={participant.name || "Participant"}
+                                          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
+                                          onClick={() => handleViewMemberProfile(participant)}
+                                          onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "/assets/images/default-avatar.webp";
+                                          }}
+                                        />
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-2">
+                                            <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
+                                                onClick={() => handleViewMemberProfile(participant)}>
+                                              {participant.name || participant.fullName || "Participant"}
+                                            </h5>
+                                          </div>
+                                          <p className="text-xs text-[#5E5854]">
+                                            {participant.joinedDate ? 
+                                              `Joined: ${new Date(participant.joinedDate).toLocaleDateString()}` : 
+                                              "Participant"}
+                                          </p>
                                         </div>
-                                        <p className="text-xs text-[#5E5854]">
-                                          {participant.joinedDate ? 
-                                            `Joined: ${new Date(participant.joinedDate).toLocaleDateString()}` : 
-                                            "Participant"}
-                                        </p>
                                       </div>
                                     </div>
-                                  </div>
-                              ))}
-                              
-                              {/* View All Button - Only show if more than 3 participants */}
-                              {tripMembers.filter(member => member.role !== 'organizer').length > 3 && (
-                                <div className="text-center mt-3">
-                                  <button 
-                                    onClick={() => handleViewAllMembers(selectedTrip)}
-                                    className="text-[#f87c6d] hover:text-[#f8a95d] text-sm font-medium"
-                                  >
-                                    + View all {tripMembers.filter(member => member.role !== 'organizer').length} participants
-                                  </button>
-                                </div>
-                              )}
+                                ))}
+                              </div>
                             </>
                           )}
                           
