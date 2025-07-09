@@ -1325,65 +1325,16 @@ export default function Profile({ currentUser, userId, onClose, onMessage }) {
                           <div className="flex items-center mt-1">
                             <FiStar className="text-yellow-400 fill-yellow-400 mr-1" />
                             <span className="text-gray-600 font-medium">N/A</span>
-                            <span className="text-gray-500 text-sm ml-1">({profileData.followers} reviews)</span>
+                            <span className="text-gray-500 text-sm ml-1">({profileData.followers || 0} reviews)</span>
                           </div>
                         </div>
-                        <button className="text-yellow-500 text-sm font-medium">View All</button>
                       </div>
-                      <div className="space-y-4">
-                        {[
-                          {
-                            id: 1,
-                            reviewer: "Sarah Chen",
-                            avatar: "/assets/images/sarachen.jpeg",
-                            rating: 5,
-                            comment: "Alex was an amazing travel companion! Very organized and always positive. Would definitely travel with again!",
-                            trip: "European Backpacking",
-                            date: "December 2024"
-                          },
-                          {
-                            id: 2,
-                            reviewer: "Mike Johnson",
-                            avatar: "/assets/images/mikejohnson.jpeg",
-                            rating: 5,
-                            comment: "Great organizer and very knowledgeable about local cultures. Made our trip unforgettable!",
-                            trip: "Southeast Asia Food Tour",
-                            date: "November 2024"
-                          },
-                          {
-                            id: 3,
-                            reviewer: "Emma Wilson",
-                            avatar: "/assets/images/emmawilson.jpeg",
-                            rating: 4,
-                            comment: "Friendly and reliable. Good communication throughout the trip planning process.",
-                            trip: "Swiss Alps Trek",
-                            date: "October 2024"
-                          }
-                        ].map((review) => (
-                          <div key={review.id} className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7]">
-                            <div className="flex items-start space-x-3">
-                              <img
-                                src={review.avatar}
-                                alt={review.reviewer}
-                                className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
-                              />
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h4 className="font-medium text-gray-800">{review.reviewer}</h4>
-                                    <p className="text-gray-500 text-xs">{review.trip} • {review.date}</p>
-                                  </div>
-                                  <div className="flex">
-                                    {[...Array(review.rating)].map((_, i) => (
-                                      <FiStar key={i} className="text-yellow-400 fill-yellow-400 w-4 h-4" />
-                                    ))}
-                                  </div>
-                                </div>
-                                <p className="text-gray-600 mt-2 text-sm">"{review.comment}"</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="flex items-center justify-center p-8 bg-[#f8f4e3] rounded-lg border border-[#d1c7b7]">
+                        <div className="text-center">
+                          <FiStar className="mx-auto text-gray-400 w-10 h-10 mb-2" />
+                          <p className="text-gray-600 font-medium">Yet to be rated</p>
+                          <p className="text-gray-500 text-sm mt-1">This user hasn't received any reviews yet</p>
+                        </div>
                       </div>
                     </div>
                   </div>

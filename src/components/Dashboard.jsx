@@ -2393,7 +2393,7 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     
     // If user has an avatar property that's a valid URL, use it
-    if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:'))) {
+    if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('data:') || user.avatar.startsWith('/'))) {
       return user.avatar;
     }
     
