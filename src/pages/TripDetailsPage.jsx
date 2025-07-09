@@ -586,3 +586,53 @@ useEffect(() => {
     setCostBreakdown(calculateCostBreakdown(selectedTrip));
   }
 }, [selectedTrip]);
+
+// When fetching trip details, make sure to get all members
+const fetchTripDetails = async (tripId) => {
+  try {
+    const response = await axios.get(`${BACKEND_URL}/api/trips/${tripId}`);
+    
+    if (response.data && response.data.success) {
+      const tripData = response.data.trip;
+      
+      // Ensure we have the complete list of participants
+      const organizer = {
+        id: tripData.organizerId,
+        _id: tripData.organizerId,
+        name: tripData.organizer,
+        fullName: tripData.organizer,
+        avatar: tripData.organizerAvatar || "/assets/images/default-avatar.webp",
+        role: 'organizer',
+        isHost: true
+      };
+      
+      // Get all participants (excluding organizer)
+      const participants = Array.isArray(tripData.joinedMembers) 
+        ? tripData.joinedMembers.map(member => ({
+            ...member,
+            role: 'participant',
+            isHost: false
+          }))
+        : [];
+      
+      // Set trip with all members
+      setSelectedTrip({
+        ...tripData,
+        allMembers: [organizer, ...participants]
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching trip details:", error);
+  }
+};
+
+{/* Trip Members Section */}
+<div className="mt-6">
+  <h3 className="text-xl font-bold text-[#2c5e4a] mb-4">Trip Members</h3>
+  <TripMembers 
+    members={selectedTrip.allMembers || []}
+    organizers={selectedTrip.allMembers?.filter(m => m.isHost || m.role === 'organizer') || []}
+    participants={selectedTrip.allMembers?.filter(m => !m.isHost && m.role !== 'organizer') || []}
+    onViewProfile={handleViewProfile}
+  />
+</div>

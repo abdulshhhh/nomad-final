@@ -86,15 +86,15 @@ export default function TripMembers({ members, onViewProfile }) {
               className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
               onError={(e) => {
                 console.log("Fallback to default avatar");
-                e.target.onerror = null; // Prevent infinite loop
+                e.target.onerror = null;
                 e.target.src = "/assets/images/default-avatar.webp";
               }}
             />
             <div>
-              <h5 className="font-medium text-[#2c5e4a] cursor-pointer">
+              <h5 className="font-medium cursor-pointer">
                 {organizer.name || organizer.fullName}
               </h5>
-              <p className="text-xs text-[#5E5854]">Organizer</p>
+              <p className="text-xs text-gray-500">Trip Organizer</p>
             </div>
           </div>
         ))}
@@ -124,6 +124,11 @@ export default function TripMembers({ members, onViewProfile }) {
                   {participant.name || participant.fullName}
                 </h5>
                 <p className="text-xs text-gray-500">Participant</p>
+                {participant.joinedDate && (
+                  <p className="text-xs text-gray-400">
+                    Joined: {new Date(participant.joinedDate).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             </div>
           ))}

@@ -3521,17 +3521,18 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                     <div className="bg-white p-4 rounded-xl border border-[#d1c7b7] mb-6">
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="font-bold text-[#2c5e4a]">
-                          Trip Organizer
+                          Trip Members
                         </h4>
                       </div>
 
                       {loadingTripDetails ? (
                         <div className="bg-[#f8f4e3] p-4 rounded-lg border border-[#d1c7b7] text-center">
-                          <p className="text-[#5E5854] text-sm">Loading trip organizer...</p>
+                          <p className="text-[#5E5854] text-sm">Loading trip members...</p>
                         </div>
                       ) : (
                         <>
                           {/* Organizer */}
+                          <h5 className="font-medium text-[#5E5854] mb-2">Trip Organizer</h5>
                           {tripMembers.filter(member => member.role === 'organizer').map((organizer) => (
                             <div key={organizer.id || 'organizer'} className="mb-4">
                               <div className="flex items-center bg-[#f8f4e3] p-3 rounded-lg border border-[#d1c7b7]">
@@ -3557,6 +3558,49 @@ function Dashboard({ onLogout, currentUser, darkMode, setDarkMode }) {
                               </div>
                             </div>
                           ))}
+                          
+                          {/* Participants */}
+                          {tripMembers.filter(member => member.role !== 'organizer').length > 0 && (
+                            <>
+                              <h5 className="font-medium text-[#5E5854] mb-2">Participants</h5>
+                              {tripMembers.filter(member => member.role !== 'organizer').map((participant) => (
+                                <div key={participant.id || `participant-${participant._id}`} className="mb-2">
+                                  <div className="flex items-center bg-white p-3 rounded-lg border border-[#d1c7b7]">
+                                    <img
+                                      src={participant.avatar || "/assets/images/default-avatar.webp"}
+                                      alt={participant.name || "Participant"}
+                                      className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
+                                      onClick={() => handleViewMemberProfile(participant)}
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "/assets/images/default-avatar.webp";
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2">
+                                        <h5 className="font-medium text-[#2c5e4a] cursor-pointer hover:text-[#f87c6d]"
+                                            onClick={() => handleViewMemberProfile(participant)}>
+                                          {participant.name || participant.fullName || "Participant"}
+                                        </h5>
+                                      </div>
+                                      <p className="text-xs text-[#5E5854]">
+                                        {participant.joinedDate ? 
+                                          `Joined: ${new Date(participant.joinedDate).toLocaleDateString()}` : 
+                                          "Participant"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          
+                          {/* No participants message */}
+                          {tripMembers.filter(member => member.role !== 'organizer').length === 0 && (
+                            <div className="bg-white p-3 rounded-lg border border-[#d1c7b7] text-center mt-2">
+                              <p className="text-[#5E5854] text-sm">No participants have joined this trip yet</p>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
