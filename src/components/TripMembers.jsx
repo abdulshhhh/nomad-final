@@ -47,7 +47,7 @@ export default function TripMembers({ members, onViewProfile }) {
     };
   }, [members]);
   
-  // Get avatar for a specific member
+  // Enhance the getAvatar function to ensure it always returns a valid image URL
   const getAvatar = (member) => {
     const memberId = member.id || member._id;
     
@@ -56,7 +56,7 @@ export default function TripMembers({ members, onViewProfile }) {
       return memberAvatars[memberId];
     }
     
-    // Otherwise use member's avatar if available
+    // Otherwise use member's avatar if available and valid
     if (member.avatar && (member.avatar.startsWith('data:') || member.avatar.startsWith('http'))) {
       return member.avatar;
     }
@@ -115,7 +115,8 @@ export default function TripMembers({ members, onViewProfile }) {
                 alt={participant.name || participant.fullName}
                 className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
                 onError={(e) => {
-                  e.target.onerror = null;
+                  console.log("Fallback to default avatar");
+                  e.target.onerror = null; // Prevent infinite loop
                   e.target.src = "/assets/images/default-avatar.webp";
                 }}
               />

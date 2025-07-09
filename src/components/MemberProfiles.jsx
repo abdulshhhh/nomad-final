@@ -272,7 +272,7 @@ export default function MemberProfiles({ trip, onStartChat }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="member-profiles-container" style={{ position: 'relative', zIndex: 1000 }}>
       {/* Header */}
       <div className="bg-gradient-to-r from-[#2c5e4a] to-[#1a3a2a] p-4 rounded-xl shadow-md mb-6">
         <h2 className="text-xl font-bold text-[#f8d56b]">Trip Members</h2>
