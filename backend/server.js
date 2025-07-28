@@ -6,6 +6,7 @@ const passport = require('passport');
 const http = require('http');
 const socketIo = require('socket.io');
 const Message = require('./models/Message');
+const path = require('path'); // Added for static file serving
 
 require('dotenv').config({ path: '../.env' });
 require('./config/passport');
@@ -13,11 +14,17 @@ require('./config/passport');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
+
+// Configure CORS for production and development
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL 
+    : 'http://localhost:5173',
+  credentials: true
+};
+
 const io = socketIo(server, {
-  cors: {
-    origin: 'http://localhost:5173',
-    credentials: true
-  }
+  cors: corsOptions
 });
 
 // 🚀 Trip Auto-Completion Service
@@ -37,38 +44,77 @@ const { router: leaderboardRoutes, setSocketIO: setLeaderboardSocketIO } = requi
 const publicRoutes = require('./routes/public');
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Session configuration with production settings
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Add a root-level health check endpoint
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+  
+  // Handle SPA fallback
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+  });
+}
+
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ 
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Log requests
+// Log requests with more details
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - IP: ${req.ip}`);
   next();
 });
 
-// MongoDB connection monitoring
+// MongoDB connection monitoring with retry logic
+const connectWithRetry = () => {
+  mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    retryWrites: true,
+    w: 'majority'
+  })
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    setTimeout(connectWithRetry, 5000); // Retry after 5 seconds
+  });
+};
+
 mongoose.connection.on('connected', () => {
   console.log('MongoDB connected successfully');
 });
+
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+  if (process.env.NODE_ENV !== 'test') {
+    connectWithRetry();
+  }
 });
 
 // Route mounting
@@ -224,21 +270,42 @@ app.get('/api/routes', (req, res) => {
 });
 
 // Connect to MongoDB and start server
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('MongoDB connected');
-  server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log('Frontend should be available at http://localhost:5173');
+connectWithRetry();
 
-    // 🚀 Start trip auto-completion service
-    tripAutoCompletionService = new TripAutoCompletionService(io);
-    tripAutoCompletionService.start();
-    console.log('🚀 Trip auto-completion service initialized');
-  });
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`Frontend should be available at ${process.env.FRONTEND_URL}`);
+  } else {
+    console.log('Frontend should be available at http://localhost:5173');
+  }
+
+  // 🚀 Start trip auto-completion service
+  tripAutoCompletionService = new TripAutoCompletionService(io);
+  tripAutoCompletionService.start();
+  console.log('🚀 Trip auto-completion service initialized');
 });
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
